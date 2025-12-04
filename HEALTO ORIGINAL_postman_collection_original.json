@@ -1,0 +1,1038 @@
+{
+	"info": {
+		"_postman_id": "fc43cfd6-fa18-42e1-aa1d-8e6c6fd86174",
+		"name": "HEALTO ORIGINAL",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "47408047",
+		"_collection_link": "https://sanjay-m-3f5308a5-3302401.postman.co/workspace/Sanjay-M's-Workspace~9f1011cf-11c5-4d00-8a88-aed237c103bd/collection/47408047-fc43cfd6-fa18-42e1-aa1d-8e6c6fd86174?action=share&source=collection_link&creator=47408047"
+	},
+	"item": [
+		{
+			"name": "Patients",
+			"item": [
+				{
+					"name": "Patient Registration",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"name\": \"Monisha\",\r\n    \"phone_number\": \"7010594447\",\r\n    \"email\": \"sanjaymanimar@gmail.com\",\r\n    \"dob\": \"1990-05-15\",\r\n    \"gender\": \"Male\",\r\n    \"blood_group\": \"B+\",\r\n    \"address\": \"123 Main Street, Chennai\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/api/patient",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"api",
+								"patient"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patient Login",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"phone_number\": \"9840949033\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://spiderdesk.asia/healto/public/api/patient/login",
+							"protocol": "https",
+							"host": [
+								"spiderdesk",
+								"asia"
+							],
+							"path": [
+								"healto",
+								"public",
+								"api",
+								"patient",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patient Verify OTP",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"phone_number\": \"9840949033\",\r\n    \"otp\": \"555555\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://spiderdesk.asia/healto/public/api/patient/verify-otp",
+							"protocol": "https",
+							"host": [
+								"spiderdesk",
+								"asia"
+							],
+							"path": [
+								"healto",
+								"public",
+								"api",
+								"patient",
+								"verify-otp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patient Details (Logged in user)",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "rweg4Hz2qtYhAnsOGNUFU78mls3aYD2zZvati5l74i7BIrRKFv23LmpmHCmAlC8YfRTtxFZaSHkE4T2B",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "",
+								"type": "text",
+								"disabled": true
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "https://spiderdesk.asia/healto/public/api/patient/profile",
+							"protocol": "https",
+							"host": [
+								"spiderdesk",
+								"asia"
+							],
+							"path": [
+								"healto",
+								"public",
+								"api",
+								"patient",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Patients Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{HEALTO_LOCAL}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"blood_group\": \"A+\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/patient/update-profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"patient",
+								"update-profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Patient Logout",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{HEALTO_LOCAL}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/patient/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"patient",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Specializtions",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{HEALTO_LOCAL}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/patient/specializations",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"patient",
+								"specializations"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Doctors",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{HEALTO_LOCAL}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/patient/doctors-by-rating",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"patient",
+								"doctors-by-rating"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Hospitals",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "Get Doctors TIme slots",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "gOorKQe8b3DWr9zlEOvkUgBoPDstnz3cj7NEE0m0OYxmMolwElJeNQaIEpTcbf4Z4L9zaIuZ2lgs5F4U",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "https://spiderdesk.asia/healto/patient/doctors/1/time-slots?date=2025-11-28",
+							"protocol": "https",
+							"host": [
+								"spiderdesk",
+								"asia"
+							],
+							"path": [
+								"healto",
+								"patient",
+								"doctors",
+								"1",
+								"time-slots"
+							],
+							"query": [
+								{
+									"key": "date",
+									"value": "2025-11-28"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Book Appointment",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{HEALTO_LOCAL}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"doctor_id\": 1,\r\n  \"appointment_date\": \"2025-11-28\",\r\n  \"scheduled_time\": \"11:00:00\",\r\n  \"duration_minutes\": 15,\r\n  \"patient_name\": \"Tarun S\",\r\n  \"patient_phone\": \"+917010594447\",\r\n  \"patient_email\": \"tarun@example.com\",\r\n  \"patient_dob\": \"1990-01-01\",\r\n  \"patient_gender\": \"male\",\r\n  \"patient_blood_group\": \"O+\",\r\n  \"patient_address\": \"123 Street\",\r\n  \"reason_for_visit\": \"Regular checkup\",\r\n  \"payment_type\": \"offline\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/patient/appointments/book",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"patient",
+								"appointments",
+								"book"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Fees Details for Appointment",
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/patient/consultation-fee?specialization_id=1&doctor_id=1",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"patient",
+								"consultation-fee"
+							],
+							"query": [
+								{
+									"key": "specialization_id",
+									"value": "1"
+								},
+								{
+									"key": "doctor_id",
+									"value": "1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Appointment Details Logged in patient",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{HEALTO_LOCAL}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/patient/appointments/details",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"patient",
+								"appointments",
+								"details"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Rate Doctors",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{HEALTO_LOCAL}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"doctor_id\": 1,\r\n    \"rating\": 5,\r\n    \"review\": \"Excellefgdgnt doctor!\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/patient/doctors/rate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"patient",
+								"doctors",
+								"rate"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Rate Hospital",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{HEALTO_LOCAL}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "",
+								"value": "",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "hospital_id",
+									"value": "3",
+									"type": "text"
+								},
+								{
+									"key": "rating",
+									"value": "5",
+									"type": "text"
+								},
+								{
+									"key": "review",
+									"value": "Great Hospital",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/patient/hospitals/rate",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"patient",
+								"hospitals",
+								"rate"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Doctor",
+			"item": [
+				{
+					"name": "Doctor Login",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"Sanjay\",\r\n    \"password\": \"hospital\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{base_url}}/doctor/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Doctor Logout",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{DOCTOR_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/doctor/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Doctor Profile (Logged in User)",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{DOCTOR_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"username\": \"Sanjay\",\r\n    \"password\": \"hospital\"\r\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/doctor/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Doctors Dashboard Details",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{DOCTOR_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/doctor/dashboard",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"dashboard"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Doctors specialization for update profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{DOCTOR_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/doctor/specializations",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"specializations"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Doctor Update Profile",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{DOCTOR_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n  \"name\": \"Sanjay\",\r\n  \"phone\": \"9876543210\",\r\n  \"email\": \"rohan.sharma@example.com\",\r\n  \"dob\": \"1984-11-15\",\r\n  \"gender\": \"male\",\r\n  \"blood_group\": \"B+\",\r\n  \"address\": \"221B, MG Road, Indiranagar, Bengaluru, Karnataka\",\r\n  \"experience_years\": 10,\r\n  \"qualification\": \"MBBS, MD (General Medicine)\",\r\n  \"info\": \"General physician with 10 years of experience.\",\r\n\r\n}\r\n"
+						},
+						"url": {
+							"raw": "{{base_url}}/doctor/update-profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"update-profile"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Doctor change-password",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{DOCTOR_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"current_password\": \"hospital\",\r\n    \"new_password\": \"sanjayhospital\",\r\n    \"new_password_confirmation\": \"sanjayhospital\"\r\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/doctor/change-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"change-password"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Doctors today-appointments",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{DOCTOR_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"current_password\": \"hospital\",\r\n    \"new_password\": \"sanjayhospital\",\r\n    \"new_password_confirmation\": \"sanjayhospital\"\r\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/doctor/today-appointments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"today-appointments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Doctors All Appointments",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{DOCTOR_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/doctor/appointments",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"appointments"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Particular Appointment Details (passing appointment id)",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{DOCTOR_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/doctor/appointments/10",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"appointments",
+								"10"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Doctor Appointment Start",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{DOCTOR_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/doctor/appointments/10/start",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"appointments",
+								"10",
+								"start"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Doctor End Appointments",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{DOCTOR_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/doctor/appointments/11/end",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"appointments",
+								"11",
+								"end"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Doctor Mark Unavailable",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{DOCTOR_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "reason",
+									"value": "Im goign to  vacation\n",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{base_url}}/doctor/mark-unavailable",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"mark-unavailable"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Doctor Mark Available",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/doctor/mark-available",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"mark-available"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Doctors Appointment History",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{DOCTOR_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/doctor/appointment-history",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"doctor",
+								"appointment-history"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}

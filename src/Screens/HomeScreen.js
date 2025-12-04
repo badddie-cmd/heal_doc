@@ -24,11 +24,12 @@ import { getDoctorId, setDoctorId } from '../Utils/StorageUtils';
 import { useTheme } from '../Context/ThemeContext';
 import { PoppinsFonts } from '../Config/Fonts';
 import { ApiService } from '../Utils/ApiService';
+import { API_CONFIG } from '../Config/ApiConfig';
 
 const HomeScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
-  
+
   // State management for dashboard data
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,8 +37,8 @@ const HomeScreen = ({ navigation, route }) => {
   const [doctorInfo, setDoctorInfo] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // API Base URL - Update this with your actual API base URL
-  const API_BASE_URL = 'https://spiderdesk.asia/healto/api'; // Your actual API URL
+  // API Base URL for image URLs (remove /api part for file paths)
+  const API_BASE_URL = API_CONFIG.BASE_URL.replace('/public/api', '');
   
   // Always use API calls - no mock data
   const ENABLE_API_CALLS = true;
@@ -52,106 +53,143 @@ const HomeScreen = ({ navigation, route }) => {
 
 
   // Function to fetch dashboard data
-  const fetchDashboardData = async () => {
+  // Helper function to format today's date as "DD MMM, YYYY" (e.g., "04 Dec, 2025")
+  const formatTodayDate = () => {
+    const today = new Date();
+    const days = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = days[today.getMonth()];
+    const year = today.getFullYear();
+    return `${day} ${month}, ${year}`;
+  };
+
+  const fetchDashboardData = async (doctorIdParam = null) => {
     try {
       setLoading(true);
       setError(null);
-      
-      // Get doctor_id from doctorInfo state (from API)
-      let doctorId = doctorInfo?.id;
-      console.log('🔍 Doctor ID from doctorInfo state:', doctorId);
-      
-      if (!doctorId) {
-        console.log('⚠️ Doctor ID not found in state, trying to load doctor info first...');
-        await loadDoctorInfo();
-        
-        // Try to get doctor ID again from state
-        doctorId = doctorInfo?.id;
-        console.log('🔍 Retry Doctor ID from doctorInfo state:', doctorId);
-        
-        if (!doctorId) {
-          throw new Error('Doctor ID not found in doctor info after retry');
-        }
+
+      console.log('=== FETCHING DASHBOARD DATA ===');
+      const todayDate = formatTodayDate();
+      console.log('📅 Today\'s Date:', todayDate);
+
+      // Call both APIs: doctor profile and appointments
+      console.log('📡 Calling API: GET /doctor/profile');
+      const profileResponse = await ApiService.getDoctorProfile();
+
+      console.log('📡 Calling API: GET /doctor/appointments');
+      const appointmentsResponse = await ApiService.getDoctorAppointments();
+
+      // Check if both API calls were successful
+      if (!profileResponse.success) {
+        throw new Error(`Failed to fetch doctor profile: ${profileResponse.error}`);
       }
 
-      // Prepare API request data
-      const requestData = {
-        doctor_id: doctorId
-      };
-      
-      console.log('📤 API Request Data:', requestData);
-      console.log('🌐 API URL:', `${API_BASE_URL}/doctor-dashboard`);
+      if (!appointmentsResponse.success) {
+        throw new Error(`Failed to fetch appointments: ${appointmentsResponse.error}`);
+      }
 
-      // Make API call to doctor-dashboard endpoint
-      const response = await axios.get(`${API_BASE_URL}/doctor-dashboard`, {
-        params: requestData
+      // Extract doctor profile data
+      const doctorProfileData = profileResponse.data?.data?.doctor;
+      if (!doctorProfileData) {
+        throw new Error('No doctor profile data in API response');
+      }
+
+      console.log('✅ Doctor Profile Retrieved:', doctorProfileData.name);
+      setDoctorInfo({
+        id: doctorProfileData.id,
+        name: doctorProfileData.name,
+        email: doctorProfileData.email,
+        phone: doctorProfileData.phone,
+        profile_image: doctorProfileData.profile_image,
+        specialization_id: doctorProfileData.specialization_ids,
+        experience_years: doctorProfileData.experience_years,
+        qualification: doctorProfileData.qualification,
+        rating: doctorProfileData.rating,
+        info: doctorProfileData.info,
+        gender: doctorProfileData.gender,
+        blood_group: doctorProfileData.blood_group,
+        address: doctorProfileData.address,
+        dob: doctorProfileData.dob,
+        reviews: doctorProfileData.reviews,
       });
 
-      console.log('📥 Full API Response:', response);
-      console.log('📊 Response Status:', response.status);
-      console.log('📋 Response Headers:', response.headers);
-      console.log('💾 Response Data:', response.data);
+      // Extract all appointments data
+      const allAppointments = appointmentsResponse.data?.data || [];
+      console.log('📊 Total Appointments from API:', allAppointments.length);
+      console.log('📋 All Appointments:', allAppointments);
 
-      if (response.data && response.data.status) {
-        console.log('✅ API Response Status:', response.data.status);
-        console.log('📝 API Message:', response.data.message);
-        console.log('📊 API Data:', response.data.data);
-        
-        if (response.data.data) {
-          // Get appointments directly from doctor-dashboard response
-          const allAppointments = response.data.data.appointments || [];
-          console.log('📋 All Appointments from doctor-dashboard:', allAppointments);
-          
-          // Filter only scheduled appointments (not completed)
-          const scheduledAppointments = allAppointments.filter(appointment => 
-            appointment.status === 'scheduled'
-          );
-          console.log('📅 Scheduled Appointments Only:', scheduledAppointments);
-          
-          // Sort appointments by time (earliest first)
-          const sortedAppointments = scheduledAppointments.sort((a, b) => {
-            const timeA = a.appointment_time || '00:00';
-            const timeB = b.appointment_time || '00:00';
-            return timeA.localeCompare(timeB);
-          });
-          console.log('⏰ Sorted Appointments by Time:', sortedAppointments);
-          
-          // Map API response to our expected format
-          const mappedData = {
-            total_patients_today: response.data.data.total_patients_today || 0,
-            pending_patients: response.data.data.total_pending_patients_today || 0,
-            completed_patients: response.data.data.total_completed_patients_today || 0,
-            appointments: sortedAppointments
-          };
-          
-          console.log('🔄 Mapped Data:', mappedData);
-          setDashboardData(mappedData);
-        } else {
-          console.log('⚠️ No data object in API response');
+      // Filter appointments for today only
+      const todayAppointments = allAppointments.filter(apt => {
+        console.log(`🔍 Comparing "${apt.appointment_date}" with "${todayDate}"`);
+        return apt.appointment_date === todayDate;
+      });
+
+      console.log(`📅 Today's Appointments (${todayDate}):`, todayAppointments.length);
+      console.log('📅 Today\'s Appointments:', todayAppointments);
+
+      // Calculate statistics from today's appointments
+      const totalPatientsToday = todayAppointments.length;
+      const pendingPatientsToday = todayAppointments.filter(apt => apt.status === 'scheduled').length;
+
+      console.log('📈 Statistics:');
+      console.log(`   Total Patients Today: ${totalPatientsToday}`);
+      console.log(`   Pending Patients Today: ${pendingPatientsToday}`);
+
+      // Map appointments to UI format
+      const mappedAppointments = todayAppointments.map(apt => ({
+        id: apt.id,
+        token: apt.token_number,
+        patient_name: apt.patient_name,
+        patient_image: apt.patient_image,
+        patient_phone: apt.patient_phone,
+        age: apt.age,
+        symptoms: apt.symptoms,
+        appointment_time: apt.scheduled_time,
+        status: apt.status,
+        details: {
+          token: apt.token_number,
+          description: apt.symptoms,
+        },
+        patient: {
+          name: apt.patient_name,
+          age: apt.age,
+          profile_image: apt.patient_image,
+        },
+        sub_patient: {
+          name: apt.patient_name,
+          age: apt.age,
         }
-      } else {
-        console.log('⚠️ Invalid API response format');
-        throw new Error('Invalid API response format');
-      }
+      }));
+
+      // Sort by scheduled time (earliest first)
+      mappedAppointments.sort((a, b) => {
+        const timeA = a.appointment_time || '00:00';
+        const timeB = b.appointment_time || '00:00';
+        return timeA.localeCompare(timeB);
+      });
+
+      console.log('✅ Mapped Appointments:', mappedAppointments);
+
+      // Prepare final dashboard data
+      const finalDashboardData = {
+        total_patients_today: totalPatientsToday,
+        pending_patients: pendingPatientsToday,
+        completed_patients: todayAppointments.filter(apt => apt.status === 'completed').length,
+        appointments: mappedAppointments
+      };
+
+      console.log('📊 Final Dashboard Data:', finalDashboardData);
+      setDashboardData(finalDashboardData);
+      console.log('=== DASHBOARD DATA FETCH COMPLETE ===');
+
     } catch (err) {
-      console.error('❌ Error fetching dashboard data:', err);
+      console.error('❌ Error fetching dashboard data:', err.message);
       console.error('❌ Error details:', {
         message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-        statusText: err.response?.statusText
+        stack: err.stack
       });
-      
-      // Check if it's a network error (API not available)
-      if (err.message === 'Network Error' || err.code === 'NETWORK_ERROR') {
-        console.log('🌐 Network Error - API not available, using fallback data');
-        console.log('📊 Using Fallback Data:', FALLBACK_DATA);
-        setDashboardData(FALLBACK_DATA);
-        setError('API not available - showing empty dashboard');
-      } else {
-        setError(err.message || 'Failed to fetch dashboard data');
-        Alert.alert('Error', 'Failed to load dashboard data. Please try again.');
-      }
+      setError(err.message || 'Failed to fetch dashboard data');
+      Alert.alert('Error', 'Failed to load dashboard data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -206,26 +244,26 @@ const HomeScreen = ({ navigation, route }) => {
     }
   }, [route?.params?.refresh]);
 
-  // Function to load doctor information from API
-  const loadDoctorInfo = async () => {
+  // Function to load doctor information from API and return it
+  const loadDoctorInfoAndReturn = async () => {
     try {
       console.log('🔍 Loading Doctor Information from API...');
-      
-      // Get doctor ID from login response data
-      const userLoginData = await AsyncStorage.getItem('userLoginData');
-      console.log('🔍 Retrieved userLoginData:', userLoginData);
-      
-      if (!userLoginData) {
-        throw new Error('Login data not found in storage');
+
+      // Get doctor ID from login session data
+      const sessionData = await AsyncStorage.getItem('doctorLoginSession');
+      console.log('🔍 Retrieved doctorLoginSession:', !!sessionData ? 'Found' : 'Not found');
+
+      if (!sessionData) {
+        throw new Error('Login session not found in storage');
       }
-      
-      const parsedData = JSON.parse(userLoginData);
-      if (!parsedData.userData || !parsedData.userData.data || !parsedData.userData.data.id) {
-        throw new Error('Doctor ID not found in login data');
+
+      const parsedData = JSON.parse(sessionData);
+      if (!parsedData.userData || !parsedData.userData.id) {
+        throw new Error('Doctor ID not found in login session');
       }
-      
-      const doctorId = parsedData.userData.data.id;
-      console.log('🔍 Retrieved doctor ID from login data:', doctorId);
+
+      const doctorId = parsedData.userData.id;
+      console.log('🔍 Retrieved doctor ID from session:', doctorId);
 
       // Call API to get doctor edit data
       const response = await ApiService.getDoctorEditData(doctorId);
@@ -270,6 +308,7 @@ const HomeScreen = ({ navigation, route }) => {
           console.log('📍 Address:', doctorInfo.address);
           console.log('🖼️ Profile Image:', doctorInfo.profile_image);
           console.log('🖼️ Full Image URL:', `${API_BASE_URL.replace('/api', '')}/${doctorInfo.profile_image}`);
+          
           setDoctorInfo(doctorInfo);
           
           // Save doctor ID for API calls
@@ -277,6 +316,7 @@ const HomeScreen = ({ navigation, route }) => {
           console.log('💾 Doctor ID saved:', doctorData.id.toString());
           
           console.log('✅ Doctor information loaded successfully from API');
+          return doctorInfo;
         } else {
           console.log('❌ API response data.status is false:', response.data);
           throw new Error(response.data?.message || 'API returned status false');
@@ -285,6 +325,17 @@ const HomeScreen = ({ navigation, route }) => {
         console.log('❌ API call failed:', response.error);
         throw new Error(response.error || 'Failed to load doctor information');
       }
+    } catch (error) {
+      console.error('❌ Error loading doctor info:', error);
+      setError(error.message);
+      throw error;
+    }
+  };
+
+  // Function to load doctor information from API
+  const loadDoctorInfo = async () => {
+    try {
+      await loadDoctorInfoAndReturn();
     } catch (error) {
       console.error('❌ Error loading doctor info:', error);
       setError(error.message);

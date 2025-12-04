@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Storage keys
 export const STORAGE_KEYS = {
+  DOCTOR_LOGIN_SESSION: 'doctorLoginSession',
   DOCTOR_ID: 'doctor_id',
   USER_DATA: 'user_data',
   AUTH_TOKEN: 'auth_token',
@@ -76,17 +77,107 @@ export const clearStorage = async () => {
   }
 };
 
+// Session management functions
+export const saveLoginSession = async (sessionData) => {
+  try {
+    console.log('💾 Saving login session...');
+    console.log('🔐 DEBUG - Session data received:', {
+      isLoggedIn: sessionData?.isLoggedIn,
+      tokenValue: sessionData?.token,
+      tokenPresent: !!sessionData?.token,
+      userId: sessionData?.userData?.id,
+      userName: sessionData?.userData?.name,
+    });
+    await AsyncStorage.setItem(
+      STORAGE_KEYS.DOCTOR_LOGIN_SESSION,
+      JSON.stringify(sessionData)
+    );
+    console.log('✅ Login session saved successfully');
+    console.log('👨‍⚕️ Doctor:', sessionData?.userData?.name);
+    console.log('🔑 Token present:', !!sessionData?.token);
+    console.log('🔐 DEBUG - Stored data check:', JSON.stringify(sessionData).substring(0, 100) + '...');
+    return true;
+  } catch (error) {
+    console.error('❌ Error saving login session:', error);
+    return false;
+  }
+};
+
+export const getLoginSession = async () => {
+  try {
+    const sessionData = await AsyncStorage.getItem(STORAGE_KEYS.DOCTOR_LOGIN_SESSION);
+
+    if (!sessionData) {
+      console.log('⚠️ No login session found');
+      return null;
+    }
+
+    const parsedSession = JSON.parse(sessionData);
+    console.log('✅ Login session retrieved');
+    console.log('👨‍⚕️ Doctor:', parsedSession?.userData?.name);
+    console.log('🔑 Token present:', !!parsedSession?.token);
+    console.log('🔐 DEBUG - Retrieved session full check:', {
+      tokenValue: parsedSession?.token,
+      tokenType: typeof parsedSession?.token,
+      userId: parsedSession?.userData?.id,
+    });
+    return parsedSession;
+  } catch (error) {
+    console.error('❌ Error retrieving login session:', error);
+    return null;
+  }
+};
+
+export const isSessionValid = async () => {
+  try {
+    const session = await getLoginSession();
+
+    if (!session) {
+      console.log('❌ No session found');
+      return false;
+    }
+
+    // Check all required fields
+    const isValid =
+      session.isLoggedIn === true &&
+      !!session.token &&
+      !!session.userData &&
+      !!session.userData.id;
+
+    console.log('🔍 Session validity:', isValid ? '✅ Valid' : '❌ Invalid');
+    return isValid;
+  } catch (error) {
+    console.error('❌ Error validating session:', error);
+    return false;
+  }
+};
+
+export const clearLoginSession = async () => {
+  try {
+    console.log('🗑️ Clearing login session...');
+    await AsyncStorage.removeItem(STORAGE_KEYS.DOCTOR_LOGIN_SESSION);
+    console.log('✅ Login session cleared');
+    return true;
+  } catch (error) {
+    console.error('❌ Error clearing login session:', error);
+    return false;
+  }
+};
+
 // Logout function - clears all user data and login status
 export const performLogout = async () => {
   try {
     console.log('🚪 Starting logout process...');
-    
-    // Clear all storage
-    await AsyncStorage.clear();
-    
+
+    // Clear login session
+    await clearLoginSession();
+
+    // Clear other user data
+    await removeDoctorId();
+
     console.log('✅ Logout completed successfully');
     console.log('🗑️ All user data cleared from storage');
-    
+
     return {
       success: true,
       message: 'Logout completed successfully'

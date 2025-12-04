@@ -71,11 +71,35 @@ export class ApiService {
     );
   }
 
+  // Get doctor profile (logged in user)
+  static async getDoctorProfile() {
+    console.log('🔍 Making API call to doctor/profile');
+    console.log('🔍 Full URL:', getApiUrl(API_CONFIG.ENDPOINTS.DOCTOR_PROFILE));
+
+    return await this.makeRequest(
+      API_CONFIG.ENDPOINTS.DOCTOR_PROFILE,
+      'GET',
+      null
+    );
+  }
+
+  // Get all appointments
+  static async getDoctorAppointments() {
+    console.log('🔍 Making API call to doctor/appointments');
+    console.log('🔍 Full URL:', getApiUrl(API_CONFIG.ENDPOINTS.DOCTOR_APPOINTMENTS));
+
+    return await this.makeRequest(
+      API_CONFIG.ENDPOINTS.DOCTOR_APPOINTMENTS,
+      'GET',
+      null
+    );
+  }
+
   // Get doctor edit data
   static async getDoctorEditData(doctorId) {
     // For GET requests, we need to append the doctor_id as a query parameter
     const endpoint = `${API_CONFIG.ENDPOINTS.DOCTOR_EDIT}?doctor_id=${doctorId}`;
-    
+
     console.log('🔍 Making API call to doctor-edit with doctor_id:', doctorId);
     console.log('🔍 Full URL:', `${API_CONFIG.BASE_URL}${endpoint}`);
 

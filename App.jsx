@@ -18,6 +18,7 @@ import AppointmentDetailsScreen from './src/Screens/AppointmentDetailsScreen';
 import ProfileScreen from './src/Screens/ProfileScreen';
 import { ThemeProvider } from './src/Context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isSessionValid, performLogout } from './src/Utils/StorageUtils';
 import { PoppinsFonts } from './src/Config/Fonts';
 import {
   widthPercentageToDP as wp,
@@ -47,27 +48,20 @@ function App() {
 
   const checkLoginStatus = async () => {
     try {
-      const storedData = await AsyncStorage.getItem('userLoginData');
       console.log('=== CHECKING LOGIN STATUS ===');
-      console.log('Stored data:', storedData);
-      
-      if (storedData) {
-        const loginData = JSON.parse(storedData);
-        console.log('Parsed login data:', loginData);
-        
-        if (loginData.isLoggedIn) {
-          console.log('User is logged in, navigating to home');
-          setIsLoggedIn(true);
-        } else {
-          console.log('User is not logged in, navigating to welcome');
-          setIsLoggedIn(false);
-        }
+
+      // Check if session is valid using utility function
+      const isValid = await isSessionValid();
+
+      if (isValid) {
+        console.log('✅ Valid session found, navigating to home');
+        setIsLoggedIn(true);
       } else {
-        console.log('No stored data found, navigating to welcome');
+        console.log('⚠️ No valid session, navigating to welcome');
         setIsLoggedIn(false);
       }
     } catch (error) {
-      console.error('Error checking login status:', error);
+      console.error('❌ Error checking login status:', error);
       setIsLoggedIn(false);
     } finally {
       setIsLoading(false);
@@ -80,13 +74,14 @@ function App() {
 
   const handleLogout = async () => {
     try {
-      await AsyncStorage.removeItem('userLoginData');
       console.log('=== LOGOUT ===');
-      console.log('Login data removed from AsyncStorage');
+      const result = await performLogout();
+      console.log('Logout result:', result.message);
       console.log('===============');
       setIsLoggedIn(false);
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error('❌ Error during logout:', error);
+      setIsLoggedIn(false);
     }
   };
 

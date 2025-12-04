@@ -79,11 +79,12 @@ android {
 
     namespace "com.healto"
     defaultConfig {
-        applicationId "com.healto"
+        applicationId "com.healto.doctor"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        manifestPlaceholders = [usesCleartextTraffic: true]
     }
     
     
@@ -118,6 +119,13 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    // Manually linked native modules
+    implementation project(':react-native-linear-gradient')
+    implementation project(':react-native-gesture-handler')
+    implementation project(':react-native-screens')
+    implementation project(':react-native-safe-area-context')
+    implementation project(':react-native-vector-icons')
 }
 
 // Vector Icons Configuration - handled by react-native-asset

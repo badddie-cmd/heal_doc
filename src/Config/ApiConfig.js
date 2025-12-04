@@ -1,17 +1,30 @@
 // API Configuration
 export const API_CONFIG = {
-  // Update this with your actual API base URL
-  BASE_URL: 'https://spiderdesk.asia/healto/api',
-  
+  // Updated to match Postman collection base URL
+  BASE_URL: 'https://spiderdesk.asia/healto/public/api',
+
   // API Endpoints
   ENDPOINTS: {
-    DOCTOR_DASHBOARD: '/doctor-dashboard',
-    APPOINTMENT_UPDATE: '/appointment-update',
-    DOCTOR_EDIT: '/doctor-edit',
-    DOCTOR_UPDATE: '/doctor-update',
-    DOCTOR_INACTIVE: '/doctor-inactive',
+    DOCTOR_LOGIN: '/doctor/login',
+    DOCTOR_LOGOUT: '/doctor/logout',
+    DOCTOR_PROFILE: '/doctor/profile',
+    DOCTOR_EDIT: '/doctor/edit',
+    DOCTOR_UPDATE_PROFILE: '/doctor/update-profile',
+    DOCTOR_CHANGE_PASSWORD: '/doctor/change-password',
+    DOCTOR_DASHBOARD: '/doctor/dashboard',
+    DOCTOR_SPECIALIZATIONS: '/doctor/specializations',
+    DOCTOR_TODAY_APPOINTMENTS: '/doctor/today-appointments',
+    DOCTOR_APPOINTMENTS: '/doctor/appointments',
+    DOCTOR_APPOINTMENT_DETAILS: '/doctor/appointments/:id',
+    DOCTOR_START_APPOINTMENT: '/doctor/appointments/:id/start',
+    DOCTOR_END_APPOINTMENT: '/doctor/appointments/:id/end',
+    DOCTOR_MARK_UNAVAILABLE: '/doctor/mark-unavailable',
+    DOCTOR_MARK_AVAILABLE: '/doctor/mark-available',
+    DOCTOR_INACTIVE: '/doctor/inactive',
+    DOCTOR_UPDATE: '/doctor/update',
+    DOCTOR_APPOINTMENT_HISTORY: '/doctor/appointment-history',
   },
-  
+
   // Request timeout in milliseconds
   TIMEOUT: 10000,
 };

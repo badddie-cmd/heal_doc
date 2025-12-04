@@ -75,6 +75,9 @@ const LoginScreen = ({ onLogin }) => {
         // Extract token and user data from response
         const { token, data } = response.data;
 
+        console.log('🔐 DEBUG - Token extracted:', !!token, 'Value:', token);
+        console.log('🔐 DEBUG - Data doctor:', data?.doctor?.id, data?.doctor?.name);
+
         // Prepare session data
         const sessionData = {
           isLoggedIn: true,
@@ -83,6 +86,12 @@ const LoginScreen = ({ onLogin }) => {
           loginTime: new Date().toISOString(),
           username: username.trim(),
         };
+
+        console.log('🔐 DEBUG - Session data before save:', {
+          isLoggedIn: sessionData.isLoggedIn,
+          tokenPresent: !!sessionData.token,
+          userIdPresent: !!sessionData.userData?.id,
+        });
 
         // Save login session using utility function
         await saveLoginSession(sessionData);
