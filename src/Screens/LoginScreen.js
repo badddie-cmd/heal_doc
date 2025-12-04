@@ -21,6 +21,8 @@ import {
   heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
 import { PoppinsFonts } from '../Config/Fonts';
+import { API_CONFIG, getApiUrl } from '../Config/ApiConfig';
+import { saveLoginSession } from '../Utils/StorageUtils';
 import axios from 'axios';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -31,98 +33,100 @@ const LoginScreen = ({ onLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const API_BASE_URL = 'https://spiderdesk.asia/healto/api/';
-
   const handleSignIn = async () => {
     if (!username.trim() || !password.trim()) {
       Alert.alert('Error', 'Please enter both username and password');
       return;
     }
-    
+
     setIsLoading(true);
-    
-    // Console log the login data
-    const loginData = {
+
+    // Prepare login payload matching API specification
+    const loginPayload = {
       username: username.trim(),
       password: password.trim(),
     };
-    
-    console.log('=== LOGIN DATA ===');
-    console.log('Username:', loginData.username);
-    console.log('Password:', loginData.password);
-    console.log('API URL:', `${API_BASE_URL}doctor-login`);
-    console.log('==================');
-    
-    try {
-      const response = await axios.post(`${API_BASE_URL}doctor-login`, loginData);
 
-      console.log('=== API RESPONSE ===');
+    // Build API URL using config
+    const loginUrl = `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DOCTOR_LOGIN}`;
+
+    console.log('=== DOCTOR LOGIN ===');
+    console.log('URL:', loginUrl);
+    console.log('Payload:', loginPayload);
+    console.log('====================');
+
+    try {
+      // Make API call with proper axios config
+      const response = await axios.post(loginUrl, loginPayload, {
+        timeout: API_CONFIG.TIMEOUT,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      });
+
+      console.log('=== LOGIN SUCCESS ===');
       console.log('Status:', response.status);
       console.log('Response Data:', response.data);
       console.log('====================');
 
-      if (response.status === 200) {
-        // Save login data to AsyncStorage
-        try {
-          const loginData = {
-            isLoggedIn: true,
-            userData: response.data,
-            loginTime: new Date().toISOString(),
-            username: username.trim(),
-          };
-          
-          await AsyncStorage.setItem('userLoginData', JSON.stringify(loginData));
-          console.log('=== LOGIN DATA SAVED ===');
-          console.log('Saved to AsyncStorage:', loginData);
-          console.log('========================');
-        } catch (storageError) {
-          console.error('Error saving login data:', storageError);
-        }
+      // Check for successful response
+      if (response.data && response.data.success === true) {
+        // Extract token and user data from response
+        const { token, data } = response.data;
+
+        // Prepare session data
+        const sessionData = {
+          isLoggedIn: true,
+          token: token,
+          userData: data.doctor,
+          loginTime: new Date().toISOString(),
+          username: username.trim(),
+        };
+
+        // Save login session using utility function
+        await saveLoginSession(sessionData);
 
         // Show success toast
         Toast.show({
           type: 'success',
           text1: 'Login Successful',
-          text2: 'Welcome back, Doctor!',
+          text2: `Welcome back, Dr. ${data?.name || 'Doctor'}!`,
           position: 'top',
         });
 
-        // Wait for 1 second then navigate
+        // Navigate after brief delay
         setTimeout(() => {
           if (onLogin) {
             onLogin();
           }
         }, 1000);
+      } else if (response.status === 200) {
+        // Success status but check response structure
+        console.warn('Response status 200 but success flag not true:', response.data);
+        Alert.alert('Login Error', 'Unexpected response format from server');
       }
     } catch (error) {
-      console.log('=== LOGIN ERROR ===');
-      console.error('Full error object:', error);
-      
-      if (error.response) {
-        console.log('Error Response Status:', error.response.status);
-        console.log('Error Response Data:', error.response.data);
-        console.log('Error Response Headers:', error.response.headers);
-      } else if (error.request) {
-        console.log('Network Error - Request made but no response received:', error.request);
-      } else {
-        console.log('Error setting up request:', error.message);
-      }
-      console.log('===================');
-      
+      // Determine user-friendly error message
       let errorMessage = 'Login failed. Please try again.';
-      
+
       if (error.response) {
-        // Server responded with error status
-        if (error.response.status === 401) {
-          errorMessage = 'Invalid username or password';
-        } else if (error.response.status === 400) {
-          errorMessage = 'Please check your credentials';
+        const status = error.response.status;
+        const responseData = error.response.data;
+
+        if (status === 401) {
+          errorMessage = responseData?.message || 'Invalid username or password';
+        } else if (status === 400) {
+          errorMessage = responseData?.message || 'Please check your credentials';
+        } else if (status === 422) {
+          errorMessage = 'Please provide valid username and password';
         } else {
-          errorMessage = `Server error: ${error.response.status}`;
+          errorMessage = responseData?.message || `Server error: ${status}`;
         }
-      } else if (error.request) {
-        // Network error
-        errorMessage = 'Network error. Please check your connection.';
+      } else if (error.request && !error.response) {
+        errorMessage = 'Network error. Please check your internet connection.';
+      } else {
+        errorMessage = error.message || 'An unexpected error occurred';
       }
 
       Alert.alert('Login Failed', errorMessage);
