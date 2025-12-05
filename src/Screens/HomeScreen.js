@@ -543,7 +543,7 @@ const styles = StyleSheet.create({
     borderRadius: wp('3.7%'),
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: hp('15%'),
+    minHeight: hp('18%'),
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: wp('10%'),
     fontFamily: PoppinsFonts.Bold,
-    marginBottom: hp('0.6%'),
+    marginBottom: hp('1.2%'),
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
@@ -566,7 +566,7 @@ const styles = StyleSheet.create({
   pendingNumber: {
     fontSize: wp('10%'),
     fontFamily: PoppinsFonts.Bold,
-    marginBottom: hp('0.6%'),
+    marginBottom: hp('1.2%'),
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
@@ -575,6 +575,7 @@ const styles = StyleSheet.create({
     fontSize: wp('3.8%'),
     fontFamily: PoppinsFonts.SemiBold,
     textAlign: 'center',
+    minHeight: hp('4.5%'),
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
