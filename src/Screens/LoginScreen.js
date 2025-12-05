@@ -106,8 +106,11 @@ const LoginScreen = ({ onLogin }) => {
           userIdPresent: !!sessionData.userData?.id,
         });
 
+        // TEMPORARY: Comment out session storage due to token expiration issues
+        // TODO: Re-enable after backend implements token refresh mechanism
         // Save login session using utility function
-        await saveLoginSession(sessionData);
+        // await saveLoginSession(sessionData);
+        console.log('⏸️ Session storage temporarily disabled - requires fresh login on app restart');
 
         // Show success toast
         Toast.show({
