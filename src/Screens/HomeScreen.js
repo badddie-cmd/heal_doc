@@ -415,30 +415,37 @@ const HomeScreen = ({ navigation, route }) => {
               </View>
               
               <View style={styles.patientInfo}>
-                {/* Patient Name with Token */}
-                <View style={styles.nameTokenRow}>
-                  <Text style={[styles.patientName, { color: theme.colors.primary }]}>
-                    {appointment.patient?.name || appointment.sub_patient?.name || 'Unknown Patient'}
-                  </Text>
-                  {appointment.details?.token && (
-                    <Text style={[styles.tokenNumber, { color: theme.colors.primary }]}>
-                      #{appointment.details?.token || appointment.token}
+                {/* Patient Name */}
+                <Text style={[styles.patientName, { color: theme.colors.primary }]}>
+                  {appointment.patient?.name || appointment.sub_patient?.name || 'Unknown Patient'}
+                </Text>
+
+                {/* Patient Details - Columnar layout with aligned labels and values */}
+                <View style={styles.detailsContainer}>
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Age</Text>
+                    <Text style={[styles.detailColon, { color: theme.colors.text }]}>:</Text>
+                    <Text style={[styles.detailValueText, { color: theme.colors.text }]}>
+                      {appointment.patient?.age || appointment.sub_patient?.age || 'N/A'}
                     </Text>
-                  )}
+                  </View>
+
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Symptoms</Text>
+                    <Text style={[styles.detailColon, { color: theme.colors.text }]}>:</Text>
+                    <Text style={[styles.detailValueText, { color: theme.colors.text }]}>
+                      {appointment.details?.description || 'General Consultation'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailLabel, { color: theme.colors.text }]}>On</Text>
+                    <Text style={[styles.detailColon, { color: theme.colors.text }]}>:</Text>
+                    <Text style={[styles.detailValueText, { color: theme.colors.text }]}>
+                      {appointment.appointment_time || 'N/A'}
+                    </Text>
+                  </View>
                 </View>
-
-                {/* Patient Details - Simple colon-separated format */}
-                <Text style={[styles.patientDetail, { color: theme.colors.text }]}>
-                  Age <Text style={styles.detailSeparator}>:</Text> <Text style={[styles.patientDetailBold, { color: theme.colors.text }]}>{appointment.patient?.age || appointment.sub_patient?.age || 'N/A'}</Text>
-                </Text>
-
-                <Text style={[styles.patientDetail, { color: theme.colors.text }]}>
-                  Symptoms <Text style={styles.detailSeparator}>:</Text> <Text style={[styles.patientDetailBold, { color: theme.colors.text }]}>{appointment.details?.description || 'General Consultation'}</Text>
-                </Text>
-
-                <Text style={[styles.patientDetail, { color: theme.colors.text }]}>
-                  On <Text style={styles.detailSeparator}>:</Text> <Text style={[styles.patientDetailBold, { color: theme.colors.text }]}>{appointment.appointment_time || 'N/A'}</Text>
-                </Text>
 
                 {/* Status Badge */}
                 <View style={styles.statusContainer}>
@@ -606,8 +613,8 @@ const styles = StyleSheet.create({
   },
   appointmentCard: {
     marginHorizontal: wp('4%'),
-    marginBottom: hp('2%'),
-    borderRadius: wp('3%'),
+    marginBottom: hp('2.2%'),
+    borderRadius: wp('3.5%'),
     padding: wp('4%'),
     shadowColor: '#000',
     shadowOffset: {
@@ -621,28 +628,46 @@ const styles = StyleSheet.create({
   appointmentContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingRight: wp('2%'),
   },
   patientImageContainer: {
-    marginRight: wp('4%'),
+    marginRight: wp('3.5%'),
+    marginTop: hp('0.3%'),
   },
   patientImage: {
-    width: wp('28%'),
-    height: wp('28%'),
-    borderRadius: wp('3%'),
+    width: wp('25%'),
+    height: wp('25%'),
+    borderRadius: wp('2.5%'),
   },
   patientInfo: {
     flex: 1,
-  },
-  nameTokenRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: hp('0.8%'),
   },
   patientName: {
     fontSize: wp('4.2%'),
     fontFamily: PoppinsFonts.Bold,
+    marginBottom: hp('1%'),
+  },
+  detailsContainer: {
+    marginBottom: hp('1%'),
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: hp('0.45%'),
+  },
+  detailLabel: {
+    fontSize: wp('3.4%'),
+    fontFamily: PoppinsFonts.Regular,
+    width: wp('18%'),
+  },
+  detailColon: {
+    fontSize: wp('3.4%'),
+    fontFamily: PoppinsFonts.Regular,
+    marginHorizontal: wp('1.5%'),
+  },
+  detailValueText: {
+    fontSize: wp('3.4%'),
+    fontFamily: PoppinsFonts.SemiBold,
     flex: 1,
   },
   patientDetail: {
@@ -658,6 +683,12 @@ const styles = StyleSheet.create({
   detailSeparator: {
     marginHorizontal: wp('1%'),
   },
+  nameTokenRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: hp('0.8%'),
+  },
   arrowContainer: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -668,12 +699,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   statusBadge: {
-    paddingHorizontal: wp('5%'),
-    paddingVertical: hp('0.7%'),
-    borderRadius: wp('2%'),
+    paddingHorizontal: wp('5.5%'),
+    paddingVertical: hp('0.75%'),
+    borderRadius: wp('2.2%'),
   },
   statusText: {
-    fontSize: wp('3.5%'),
+    fontSize: wp('3.6%'),
     fontFamily: PoppinsFonts.Bold,
     color: '#FFFFFF',
     textTransform: 'capitalize',
