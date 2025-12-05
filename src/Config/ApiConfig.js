@@ -1,7 +1,7 @@
 // API Configuration
 export const API_CONFIG = {
   // Updated to match Postman collection base URL
-  BASE_URL: 'https://spiderdesk.asia/healto/public/api',
+  BASE_URL: 'https://spidermart.in/healto/public/api',
 
   // API Endpoints
   ENDPOINTS: {

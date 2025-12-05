@@ -72,11 +72,24 @@ const LoginScreen = ({ onLogin }) => {
 
       // Check for successful response
       if (response.data && response.data.success === true) {
-        // Extract token and user data from response
-        const { token, data } = response.data;
+        // Extract data from response
+        const { data } = response.data;
 
-        console.log('🔐 DEBUG - Token extracted:', !!token, 'Value:', token);
-        console.log('🔐 DEBUG - Data doctor:', data?.doctor?.id, data?.doctor?.name);
+        // The API response structure has:
+        // - response.data.token (at root) OR
+        // - response.data.data.doctor.api_token (in doctor object)
+        // Try to get token from root first, then from doctor.api_token
+        let token = response.data.token || data?.doctor?.api_token;
+
+        console.log('🔐 Full Response:', response.data);
+        console.log('🔐 Token from root:', response.data.token);
+        console.log('🔐 Token from doctor.api_token:', data?.doctor?.api_token);
+        console.log('🔐 Final token extracted:', !!token, 'Value:', token);
+        console.log('🔐 Doctor data:', data?.doctor?.id, data?.doctor?.name);
+
+        if (!token) {
+          throw new Error('No token found in login response');
+        }
 
         // Prepare session data
         const sessionData = {
@@ -87,7 +100,7 @@ const LoginScreen = ({ onLogin }) => {
           username: username.trim(),
         };
 
-        console.log('🔐 DEBUG - Session data before save:', {
+        console.log('🔐 Session data before save:', {
           isLoggedIn: sessionData.isLoggedIn,
           tokenPresent: !!sessionData.token,
           userIdPresent: !!sessionData.userData?.id,

@@ -1,4 +1,20 @@
 import { API_CONFIG, getApiUrl } from '../Config/ApiConfig';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Helper function to get auth token from storage
+async function getAuthToken() {
+  try {
+    const sessionData = await AsyncStorage.getItem('doctorLoginSession');
+    if (sessionData) {
+      const parsed = JSON.parse(sessionData);
+      return parsed.token;
+    }
+    return null;
+  } catch (error) {
+    console.error('❌ Error getting auth token:', error);
+    return null;
+  }
+}
 
 // API Service for making HTTP requests
 export class ApiService {
@@ -76,10 +92,17 @@ export class ApiService {
     console.log('🔍 Making API call to doctor/profile');
     console.log('🔍 Full URL:', getApiUrl(API_CONFIG.ENDPOINTS.DOCTOR_PROFILE));
 
+    // Get token from storage and include in headers
+    const token = await getAuthToken();
+    console.log('🔐 Token found:', !!token);
+
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
     return await this.makeRequest(
       API_CONFIG.ENDPOINTS.DOCTOR_PROFILE,
       'GET',
-      null
+      null,
+      headers
     );
   }
 
@@ -88,10 +111,17 @@ export class ApiService {
     console.log('🔍 Making API call to doctor/appointments');
     console.log('🔍 Full URL:', getApiUrl(API_CONFIG.ENDPOINTS.DOCTOR_APPOINTMENTS));
 
+    // Get token from storage and include in headers
+    const token = await getAuthToken();
+    console.log('🔐 Token found:', !!token);
+
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
     return await this.makeRequest(
       API_CONFIG.ENDPOINTS.DOCTOR_APPOINTMENTS,
       'GET',
-      null
+      null,
+      headers
     );
   }
 
