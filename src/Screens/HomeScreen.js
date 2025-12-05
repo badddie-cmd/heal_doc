@@ -415,6 +415,7 @@ const HomeScreen = ({ navigation, route }) => {
               </View>
               
               <View style={styles.patientInfo}>
+                {/* Patient Name and Token */}
                 <View style={styles.nameTokenRow}>
                   <Text style={[styles.patientName, { color: theme.colors.primary }]}>
                     {appointment.patient?.name || appointment.sub_patient?.name || 'Unknown Patient'}
@@ -423,23 +424,36 @@ const HomeScreen = ({ navigation, route }) => {
                     #{appointment.details?.token || appointment.token || 'N/A'}
                   </Text>
                 </View>
-                
-                <Text style={[styles.patientDetail, { color: theme.colors.text }]}>
-                  Age : <Text style={[styles.patientDetailBold, { color: theme.colors.text }]}>{appointment.patient?.age || appointment.sub_patient?.age || 'N/A'}</Text>
-                </Text>
-                
-                <Text style={[styles.patientDetail, { color: theme.colors.text }]}>
-                  Symptoms : <Text style={[styles.patientDetailBold, { color: theme.colors.text }]}>{appointment.details?.description || 'General Consultation'}</Text>
-                </Text>
-                
-                <Text style={[styles.patientDetail, { color: theme.colors.text }]}>
-                  On : <Text style={[styles.patientDetailBold, { color: theme.colors.text }]}>{appointment.appointment_time || 'N/A'}</Text>
-                </Text>
-                
+
+                {/* Patient Details - Structured Layout */}
+                <View style={styles.detailsContainer}>
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Age</Text>
+                    <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                      {appointment.patient?.age || appointment.sub_patient?.age || 'N/A'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Symptoms</Text>
+                    <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                      {appointment.details?.description || 'General Consultation'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailLabel, { color: theme.colors.text }]}>On</Text>
+                    <Text style={[styles.detailValue, { color: theme.colors.text }]}>
+                      {appointment.appointment_time || 'N/A'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Status Badge */}
                 <View style={styles.statusContainer}>
                   <View style={[
                     styles.statusBadge,
-                    { backgroundColor: appointment.status === 'completed' ? theme.colors.statusCompleted : 
+                    { backgroundColor: appointment.status === 'completed' ? theme.colors.statusCompleted :
                                      appointment.status === 'scheduled' ? theme.colors.statusScheduled : theme.colors.statusPending }
                   ]}>
                     <Text style={styles.statusText}>{appointment.status}</Text>
@@ -615,27 +629,29 @@ const styles = StyleSheet.create({
   },
   appointmentContent: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    paddingRight: wp('3%'),
   },
   patientImageContainer: {
-    marginRight: wp('4%'),
+    marginRight: wp('3%'),
   },
   patientImage: {
-    width: wp('25%'),
-    height: wp('30%'),
+    width: wp('22%'),
+    height: wp('22%'),
     borderRadius: wp('2%'),
   },
   patientInfo: {
     flex: 1,
+    justifyContent: 'space-between',
   },
   nameTokenRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: hp('1%'),
+    marginBottom: hp('1.5%'),
   },
   patientName: {
-    fontSize: wp('4.2%'),
+    fontSize: wp('4%'),
     fontFamily: PoppinsFonts.Bold,
     flex: 1,
   },
@@ -648,56 +664,62 @@ const styles = StyleSheet.create({
   patientDetailBold: {
     fontFamily: PoppinsFonts.Bold,
   },
-  arrowContainer: {
-    justifyContent: 'center',
+  detailsContainer: {
+    marginBottom: hp('1.2%'),
+  },
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: hp('0.6%'),
     alignItems: 'center',
+  },
+  detailLabel: {
+    fontSize: wp('3.2%'),
+    fontFamily: PoppinsFonts.SemiBold,
+    minWidth: wp('18%'),
+  },
+  detailValue: {
+    fontSize: wp('3.2%'),
+    fontFamily: PoppinsFonts.SemiBold,
+    flex: 1,
+    textAlign: 'right',
     paddingLeft: wp('2%'),
   },
+  arrowContainer: {
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingTop: hp('0.5%'),
+  },
   statusContainer: {
-    marginTop: hp('1%'),
+    marginTop: hp('0.5%'),
     alignItems: 'flex-start',
   },
   statusBadge: {
-    paddingHorizontal: wp('3%'),
-    paddingVertical: hp('0.5%'),
-    borderRadius: wp('2%'),
+    paddingHorizontal: wp('4%'),
+    paddingVertical: hp('0.6%'),
+    borderRadius: wp('2.5%'),
   },
   statusText: {
-    fontSize: wp('3%'),
+    fontSize: wp('3.2%'),
     fontFamily: PoppinsFonts.Bold,
     color: '#FFFFFF',
     textTransform: 'capitalize',
   },
   tokenNumber: {
-    fontSize: wp('4%'),
+    fontSize: wp('3.8%'),
     fontFamily: PoppinsFonts.Bold,
     backgroundColor: '#E3F2FD',
-    paddingHorizontal: wp('2%'),
-    paddingVertical: hp('0.3%'),
+    paddingHorizontal: wp('2.5%'),
+    paddingVertical: hp('0.4%'),
     borderRadius: wp('2%'),
     textAlign: 'center',
-    minWidth: wp('8%'),
+    minWidth: wp('10%'),
   },
   patientNameRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: hp('0.5%'),
-  },
-  patientName: {
-    fontSize: wp('4%'),
-    fontFamily: PoppinsFonts.Bold,
-    flex: 1,
-  },
-  tokenNumber: {
-    fontSize: wp('4%'),
-    fontFamily: PoppinsFonts.Bold,
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: wp('2%'),
-    paddingVertical: hp('0.3%'),
-    borderRadius: wp('2%'),
-    textAlign: 'center',
-    minWidth: wp('8%'),
   },
   tokenTimeRow: {
     flexDirection: 'row',
@@ -711,12 +733,6 @@ const styles = StyleSheet.create({
     fontFamily: PoppinsFonts.Bold,
     marginTop: hp('0.8%'),
     marginBottom: hp('0.3%'),
-  },
-  patientDetail: {
-    fontSize: wp('3.5%'),
-    fontFamily: PoppinsFonts.Medium,
-    color: '#000000',
-    marginBottom: hp('0.25%'),
   },
   patientInitials: {
     fontSize: wp('4%'),
