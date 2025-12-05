@@ -415,39 +415,30 @@ const HomeScreen = ({ navigation, route }) => {
               </View>
               
               <View style={styles.patientInfo}>
-                {/* Patient Name and Token */}
+                {/* Patient Name with Token */}
                 <View style={styles.nameTokenRow}>
                   <Text style={[styles.patientName, { color: theme.colors.primary }]}>
                     {appointment.patient?.name || appointment.sub_patient?.name || 'Unknown Patient'}
                   </Text>
-                  <Text style={[styles.tokenNumber, { color: theme.colors.primary }]}>
-                    #{appointment.details?.token || appointment.token || 'N/A'}
-                  </Text>
+                  {appointment.details?.token && (
+                    <Text style={[styles.tokenNumber, { color: theme.colors.primary }]}>
+                      #{appointment.details?.token || appointment.token}
+                    </Text>
+                  )}
                 </View>
 
-                {/* Patient Details - Structured Layout */}
-                <View style={styles.detailsContainer}>
-                  <View style={styles.detailRow}>
-                    <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Age</Text>
-                    <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                      {appointment.patient?.age || appointment.sub_patient?.age || 'N/A'}
-                    </Text>
-                  </View>
+                {/* Patient Details - Simple colon-separated format */}
+                <Text style={[styles.patientDetail, { color: theme.colors.text }]}>
+                  Age <Text style={styles.detailSeparator}>:</Text> <Text style={[styles.patientDetailBold, { color: theme.colors.text }]}>{appointment.patient?.age || appointment.sub_patient?.age || 'N/A'}</Text>
+                </Text>
 
-                  <View style={styles.detailRow}>
-                    <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Symptoms</Text>
-                    <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                      {appointment.details?.description || 'General Consultation'}
-                    </Text>
-                  </View>
+                <Text style={[styles.patientDetail, { color: theme.colors.text }]}>
+                  Symptoms <Text style={styles.detailSeparator}>:</Text> <Text style={[styles.patientDetailBold, { color: theme.colors.text }]}>{appointment.details?.description || 'General Consultation'}</Text>
+                </Text>
 
-                  <View style={styles.detailRow}>
-                    <Text style={[styles.detailLabel, { color: theme.colors.text }]}>On</Text>
-                    <Text style={[styles.detailValue, { color: theme.colors.text }]}>
-                      {appointment.appointment_time || 'N/A'}
-                    </Text>
-                  </View>
-                </View>
+                <Text style={[styles.patientDetail, { color: theme.colors.text }]}>
+                  On <Text style={styles.detailSeparator}>:</Text> <Text style={[styles.patientDetailBold, { color: theme.colors.text }]}>{appointment.appointment_time || 'N/A'}</Text>
+                </Text>
 
                 {/* Status Badge */}
                 <View style={styles.statusContainer}>
@@ -630,90 +621,72 @@ const styles = StyleSheet.create({
   appointmentContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingRight: wp('3%'),
+    paddingRight: wp('2%'),
   },
   patientImageContainer: {
-    marginRight: wp('3%'),
+    marginRight: wp('4%'),
   },
   patientImage: {
-    width: wp('22%'),
-    height: wp('22%'),
-    borderRadius: wp('2%'),
+    width: wp('28%'),
+    height: wp('28%'),
+    borderRadius: wp('3%'),
   },
   patientInfo: {
     flex: 1,
-    justifyContent: 'space-between',
   },
   nameTokenRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: hp('1.5%'),
+    marginBottom: hp('0.8%'),
   },
   patientName: {
-    fontSize: wp('4%'),
+    fontSize: wp('4.2%'),
     fontFamily: PoppinsFonts.Bold,
     flex: 1,
   },
   patientDetail: {
     fontSize: wp('3.5%'),
     fontFamily: PoppinsFonts.Regular,
-    marginBottom: hp('0.8%'),
+    marginBottom: hp('0.5%'),
     lineHeight: wp('4.5%'),
   },
   patientDetailBold: {
     fontFamily: PoppinsFonts.Bold,
+    fontWeight: '600',
   },
-  detailsContainer: {
-    marginBottom: hp('1.2%'),
-  },
-  detailRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: hp('0.6%'),
-    alignItems: 'center',
-  },
-  detailLabel: {
-    fontSize: wp('3.2%'),
-    fontFamily: PoppinsFonts.SemiBold,
-    minWidth: wp('18%'),
-  },
-  detailValue: {
-    fontSize: wp('3.2%'),
-    fontFamily: PoppinsFonts.SemiBold,
-    flex: 1,
-    textAlign: 'right',
-    paddingLeft: wp('2%'),
+  detailSeparator: {
+    marginHorizontal: wp('1%'),
   },
   arrowContainer: {
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingTop: hp('0.5%'),
+    paddingLeft: wp('1%'),
   },
   statusContainer: {
-    marginTop: hp('0.5%'),
+    marginTop: hp('0.8%'),
     alignItems: 'flex-start',
   },
   statusBadge: {
-    paddingHorizontal: wp('4%'),
-    paddingVertical: hp('0.6%'),
-    borderRadius: wp('2.5%'),
+    paddingHorizontal: wp('5%'),
+    paddingVertical: hp('0.7%'),
+    borderRadius: wp('2%'),
   },
   statusText: {
-    fontSize: wp('3.2%'),
+    fontSize: wp('3.5%'),
     fontFamily: PoppinsFonts.Bold,
     color: '#FFFFFF',
     textTransform: 'capitalize',
   },
   tokenNumber: {
-    fontSize: wp('3.8%'),
+    fontSize: wp('3.6%'),
     fontFamily: PoppinsFonts.Bold,
     backgroundColor: '#E3F2FD',
-    paddingHorizontal: wp('2.5%'),
-    paddingVertical: hp('0.4%'),
+    paddingHorizontal: wp('2%'),
+    paddingVertical: hp('0.3%'),
     borderRadius: wp('2%'),
     textAlign: 'center',
-    minWidth: wp('10%'),
+    minWidth: wp('9%'),
   },
   patientNameRow: {
     flexDirection: 'row',
