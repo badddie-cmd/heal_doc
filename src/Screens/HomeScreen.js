@@ -52,40 +52,29 @@ const HomeScreen = ({ navigation, route }) => {
   
 
 
-  // Function to fetch dashboard data
-  // Helper function to format today's date as "DD MMM, YYYY" (e.g., "04 Dec, 2025")
-  const formatTodayDate = () => {
-    const today = new Date();
-    const days = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const day = String(today.getDate()).padStart(2, '0');
-    const month = days[today.getMonth()];
-    const year = today.getFullYear();
-    return `${day} ${month}, ${year}`;
-  };
-
   const fetchDashboardData = async (doctorIdParam = null) => {
     try {
       setLoading(true);
       setError(null);
 
       console.log('=== FETCHING DASHBOARD DATA ===');
-      const todayDate = formatTodayDate();
-      console.log('📅 Today\'s Date:', todayDate);
-      console.log("today date:", todayDate)
-      // Call both APIs: doctor profile and appointments
+
+      // Call both APIs: doctor profile and today's appointments
       console.log('📡 Calling API: GET /doctor/profile');
       const profileResponse = await ApiService.getDoctorProfile();
-      console.log('profile Response:', JSON.stringify(profileResponse,null,2))
-      console.log('📡 Calling API: GET /doctor/appointments');
-      const appointmentsResponse = await ApiService.getDoctorAppointments();
-      console.log('appointment response:', JSON.stringify(appointmentsResponse,null,2))
+      console.log('📥 Profile Response:', JSON.stringify(profileResponse, null, 2));
+
+      console.log('📡 Calling API: GET /doctor/today-appointments');
+      const appointmentsResponse = await ApiService.getDoctorTodayAppointments();
+      console.log('📥 Today Appointments Response:', JSON.stringify(appointmentsResponse, null, 2));
+
       // Check if both API calls were successful
       if (!profileResponse.success) {
         throw new Error(`Failed to fetch doctor profile: ${profileResponse.error}`);
       }
 
       if (!appointmentsResponse.success) {
-        throw new Error(`Failed to fetch appointments: ${appointmentsResponse.error}`);
+        throw new Error(`Failed to fetch today's appointments: ${appointmentsResponse.error}`);
       }
 
       // Extract doctor profile data
@@ -113,19 +102,10 @@ const HomeScreen = ({ navigation, route }) => {
         reviews: doctorProfileData.reviews,
       });
 
-      // Extract all appointments data
-      const allAppointments = appointmentsResponse.data?.data || [];
-      console.log('📊 Total Appointments from API:', allAppointments.length);
-      console.log('📋 All Appointments:', allAppointments);
-
-      // Filter appointments for today only
-      const todayAppointments = allAppointments.filter(apt => {
-        console.log(`🔍 Comparing "${apt.appointment_date}" with "${todayDate}"`);
-        return apt.appointment_date === todayDate;
-      });
-
-      console.log(`📅 Today's Appointments (${todayDate}):`, todayAppointments.length);
-      console.log('📅 Today\'s Appointments:', todayAppointments);
+      // Extract today's appointments (API already returns only today's appointments)
+      const todayAppointments = appointmentsResponse.data?.data || [];
+      console.log('📊 Today\'s Appointments from API:', todayAppointments.length);
+      console.log('📋 Appointments Data:', todayAppointments);
 
       // Calculate statistics from today's appointments
       const totalPatientsToday = todayAppointments.length;
@@ -699,12 +679,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   statusBadge: {
-    paddingHorizontal: wp('5.5%'),
-    paddingVertical: hp('0.75%'),
-    borderRadius: wp('2.2%'),
+    paddingHorizontal: wp('5%'),
+    paddingVertical: hp('0.7%'),
+    borderRadius: wp('2%'),
   },
   statusText: {
-    fontSize: wp('3.6%'),
+    fontSize: wp('3.5%'),
     fontFamily: PoppinsFonts.Bold,
     color: '#FFFFFF',
     textTransform: 'capitalize',

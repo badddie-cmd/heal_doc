@@ -125,6 +125,25 @@ export class ApiService {
     );
   }
 
+  // Get today's appointments only
+  static async getDoctorTodayAppointments() {
+    console.log('🔍 Making API call to doctor/today-appointments');
+    console.log('🔍 Full URL:', getApiUrl(API_CONFIG.ENDPOINTS.DOCTOR_TODAY_APPOINTMENTS));
+
+    // Get token from storage and include in headers
+    const token = await getAuthToken();
+    console.log('🔐 Token found:', !!token);
+
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+    return await this.makeRequest(
+      API_CONFIG.ENDPOINTS.DOCTOR_TODAY_APPOINTMENTS,
+      'GET',
+      null,
+      headers
+    );
+  }
+
   // Get doctor edit data
   static async getDoctorEditData(doctorId) {
     // For GET requests, we need to append the doctor_id as a query parameter
