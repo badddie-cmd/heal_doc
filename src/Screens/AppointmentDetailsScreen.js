@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,14 +20,95 @@ import {
 } from 'react-native-responsive-screen';
 import { useTheme } from '../Context/ThemeContext';
 import { PoppinsFonts } from '../Config/Fonts';
-import ApiService from '../Utils/ApiService';
+import { ApiService } from '../Utils/ApiService';
+import { API_CONFIG } from '../Config/ApiConfig';
 import { TimeUtils } from '../Utils/TimeUtils';
 
 const AppointmentDetailsScreen = ({ route, navigation }) => {
-  const { appointment } = route.params;
+  const { appointment: initialAppointment } = route.params;
+  const [appointment, setAppointment] = useState(initialAppointment);
   const [isUnavailable, setIsUnavailable] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [error, setError] = useState(null);
   const theme = useTheme();
+
+  // Fetch appointment details on component mount
+  useEffect(() => {
+    fetchAppointmentDetails();
+  }, [initialAppointment?.id]);
+
+  const fetchAppointmentDetails = async () => {
+    try {
+      setDataLoading(true);
+      setError(null);
+
+      const appointmentId = initialAppointment?.id;
+      if (!appointmentId) {
+        throw new Error('Appointment ID not found');
+      }
+
+      console.log('📡 Fetching appointment details for ID:', appointmentId);
+      const response = await ApiService.getAppointmentDetails(appointmentId);
+
+      console.log('📥 Appointment Details Response:', JSON.stringify(response, null, 2));
+
+      if (!response.success) {
+        throw new Error(`Failed to fetch appointment details: ${response.error}`);
+      }
+
+      const apiData = response.data?.data;
+      if (!apiData) {
+        throw new Error('No appointment data in API response');
+      }
+
+      // Transform API response to component format
+      const transformedAppointment = {
+        id: apiData.id,
+        token: apiData.token_number,
+        patient_name: apiData.patient?.name,
+        patient_image: apiData.patient?.profile_image,
+        patient_phone: apiData.patient?.phone,
+        age: apiData.patient?.age,
+        symptoms: apiData.symptoms,
+        appointment_time: apiData.scheduled_time,
+        appointment_date: apiData.appointment_date,
+        status: apiData.status,
+        details: {
+          token: apiData.token_number,
+          description: apiData.reason_for_visit || apiData.symptoms,
+        },
+        patient: {
+          name: apiData.patient?.name,
+          age: apiData.patient?.age,
+          phone_number: apiData.patient?.phone,
+          profile_image: apiData.patient?.profile_image,
+          email: apiData.patient?.email,
+          gender: apiData.patient?.gender,
+        },
+        sub_patient: {
+          name: apiData.patient?.name,
+          age: apiData.patient?.age,
+          phone_number: apiData.patient?.phone,
+          email: apiData.patient?.email,
+          gender: apiData.patient?.gender,
+        },
+        description: apiData.reason_for_visit || apiData.symptoms,
+      };
+
+      console.log('✅ Transformed Appointment:', transformedAppointment);
+      setAppointment(transformedAppointment);
+    } catch (err) {
+      console.error('❌ Error fetching appointment details:', err.message);
+      console.error('❌ Error details:', {
+        message: err.message,
+        stack: err.stack
+      });
+      setError(err.message || 'Failed to load appointment details');
+    } finally {
+      setDataLoading(false);
+    }
+  };
 
   const handleAppointmentFinished = () => {
     Alert.alert(
@@ -108,6 +189,9 @@ const AppointmentDetailsScreen = ({ route, navigation }) => {
     setIsUnavailable(!isUnavailable);
   };
 
+  // API Base URL for image URLs
+  const API_BASE_URL = API_CONFIG.BASE_URL.replace('/public/api', '');
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar 
@@ -128,16 +212,44 @@ const AppointmentDetailsScreen = ({ route, navigation }) => {
         <View style={styles.placeholder} />
       </LinearGradient>
 
-      <ScrollView style={styles.scrollView}>
-        {/* Patient Details Card */}
-        <View style={[styles.appointmentCard, { backgroundColor: theme.colors.cardBackground }]}>
+      {/* Loading State */}
+      {dataLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={[styles.loadingText, { color: theme.colors.text }]}>
+            Loading appointment details...
+          </Text>
+        </View>
+      )}
+
+      {/* Error State */}
+      {error && !dataLoading && (
+        <View style={styles.errorContainer}>
+          <Icon name="exclamation-circle" size={40} color="#FF6B6B" />
+          <Text style={[styles.errorText, { color: theme.colors.text }]}>
+            {error}
+          </Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
+            onPress={fetchAppointmentDetails}
+          >
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Content */}
+      {!dataLoading && !error && (
+        <ScrollView style={styles.scrollView}>
+          {/* Patient Details Card */}
+          <View style={[styles.appointmentCard, { backgroundColor: theme.colors.cardBackground }]}>
           <Text style={[styles.cardTitle, { color: theme.colors.primary }]}>User Details</Text>
           <View style={styles.patientSection}>
             <View style={styles.profileImageContainer}>
               <Image
-                source={{ 
-                  uri: appointment.patient?.profile_image && appointment.patient.profile_image !== null 
-                    ? `https://spiderdesk.asia/healto/${appointment.patient.profile_image}`
+                source={{
+                  uri: appointment.patient?.profile_image && appointment.patient.profile_image !== null
+                    ? `${API_BASE_URL}/${appointment.patient.profile_image}`
                     : 'https://spiderdesk.asia/healto/profile_images/1757571656_stylish-handsome-indian-man-tshirt-pastel-wall 1.jpg',
                   headers: {
                     'Accept': 'image/*',
@@ -211,11 +323,12 @@ const AppointmentDetailsScreen = ({ route, navigation }) => {
           </Text>
         </View>
 
-   
+
       </ScrollView>
+      )}
 
       {/* Appointment Finished Button - Only show if appointment is not completed */}
-      {appointment.status !== 'completed' && (
+      {!dataLoading && !error && appointment.status !== 'completed' && (
         <View style={[styles.buttonContainer, { backgroundColor: theme.colors.background }]}>
           <TouchableOpacity 
             style={[
@@ -243,7 +356,7 @@ const AppointmentDetailsScreen = ({ route, navigation }) => {
       )}
 
       {/* Show completion status if appointment is completed */}
-      {appointment.status === 'completed' && (
+      {!dataLoading && !error && appointment.status === 'completed' && (
         <View style={[styles.buttonContainer, { backgroundColor: theme.colors.background }]}>
           <View style={[styles.completedStatusContainer, { backgroundColor: theme.colors.statusCompleted || '#4CAF50' }]}>
               <Icon name="check-circle" size={24} color="#FFFFFF" />
@@ -483,6 +596,37 @@ const styles = StyleSheet.create({
     fontSize: wp('4.5%'),
     fontFamily: PoppinsFonts.Bold,
     marginLeft: wp('2%'),
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: wp('10%'),
+  },
+  loadingText: {
+    marginTop: hp('2%'),
+    fontSize: wp('4%'),
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: wp('10%'),
+  },
+  errorText: {
+    fontSize: wp('4%'),
+    textAlign: 'center',
+    marginVertical: hp('2%'),
+  },
+  retryButton: {
+    paddingHorizontal: wp('8%'),
+    paddingVertical: hp('1.5%'),
+    borderRadius: wp('6%'),
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: wp('4%'),
+    fontWeight: '600',
   },
 });
 

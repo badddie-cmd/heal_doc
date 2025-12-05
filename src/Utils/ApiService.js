@@ -7,6 +7,7 @@ async function getAuthToken() {
     const sessionData = await AsyncStorage.getItem('doctorLoginSession');
     if (sessionData) {
       const parsed = JSON.parse(sessionData);
+      console.log('parsed token:', parsed)
       return parsed.token;
     }
     return null;
@@ -94,8 +95,6 @@ export class ApiService {
 
     // Get token from storage and include in headers
     const token = await getAuthToken();
-    console.log('🔐 Token found:', !!token);
-
     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
     return await this.makeRequest(
@@ -113,7 +112,6 @@ export class ApiService {
 
     // Get token from storage and include in headers
     const token = await getAuthToken();
-    console.log('🔐 Token found:', !!token);
 
     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
@@ -132,12 +130,31 @@ export class ApiService {
 
     // Get token from storage and include in headers
     const token = await getAuthToken();
-    console.log('🔐 Token found:', !!token);
 
     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
 
     return await this.makeRequest(
       API_CONFIG.ENDPOINTS.DOCTOR_TODAY_APPOINTMENTS,
+      'GET',
+      null,
+      headers
+    );
+  }
+
+  // Get appointment details by ID
+  static async getAppointmentDetails(appointmentId) {
+    console.log('🔍 Making API call to doctor/appointments/:id');
+    console.log('🔍 Appointment ID:', appointmentId);
+    console.log('🔍 Full URL:', getApiUrl(`/doctor/appointments/${appointmentId}`));
+
+    // Get token from storage and include in headers
+    const token = await getAuthToken();
+    console.log('🔐 Token found:', !!token);
+
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+    return await this.makeRequest(
+      `/doctor/appointments/${appointmentId}`,
       'GET',
       null,
       headers
