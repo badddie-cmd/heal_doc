@@ -533,15 +533,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: hp('3.7%'),
+    gap: wp('3%'),
   },
   statCard: {
     flex: 1,
-    marginHorizontal: wp('1.2%'),
   },
   statCardInner: {
     padding: wp('5%'),
     borderRadius: wp('3.7%'),
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: hp('15%'),
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
