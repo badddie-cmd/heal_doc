@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  Image, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
   ActivityIndicator,
-  Alert 
+  Alert
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -16,22 +16,24 @@ import {
   heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useTheme } from '../Context/ThemeContext';
 import { PoppinsFonts } from '../Config/Fonts';
+import { ApiService } from '../Utils/ApiService';
+import { API_CONFIG } from '../Config/ApiConfig';
 
 const AppointmentsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const theme = useTheme();
-  
+
   const [appointments, setAppointments] = useState([]);
   const [filteredAppointments, setFilteredAppointments] = useState([]);
   const [selectedFilter, setSelectedFilter] = useState('All');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const API_BASE_URL = 'https://spiderdesk.asia/healto/api';
+  // API Base URL for image URLs (remove /api part for file paths)
+  const API_BASE_URL = API_CONFIG.BASE_URL.replace('/public/api', '');
 
   useEffect(() => {
     fetchAppointments();
@@ -44,62 +46,66 @@ const AppointmentsScreen = ({ navigation }) => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      console.log('📅 Fetching appointments data...');
-      
-      const doctorId = await AsyncStorage.getItem('doctor_id');
-      if (!doctorId) {
-        console.log('❌ Doctor ID not found');
-        setError('Doctor ID not found');
-        return;
+      console.log('📅 Fetching all appointments...');
+
+      // Call API to get all appointments
+      console.log('📡 Calling API: GET /doctor/appointments');
+      const response = await ApiService.getDoctorAppointments();
+
+      console.log('📥 API Response:', JSON.stringify(response, null, 2));
+
+      if (!response.success) {
+        throw new Error(`Failed to fetch appointments: ${response.error}`);
       }
 
-      const requestData = {
-        doctor_id: doctorId
-      };
-      
-      console.log('📤 API Request Data:', requestData);
-      console.log('🌐 API URL:', `${API_BASE_URL}/doctor-dashboard`);
+      // Extract appointments data
+      const apiAppointments = response.data?.data || [];
+      console.log('📋 Raw Appointments from API:', apiAppointments);
 
-      const response = await axios.get(`${API_BASE_URL}/doctor-dashboard`, {
-        params: requestData
+      // Transform API response to match card component requirements
+      const transformedAppointments = apiAppointments.map((apt) => ({
+        id: apt.id,
+        token: apt.token_number,
+        patient_name: apt.patient_name,
+        patient_image: apt.patient_image,
+        patient_phone: apt.patient_phone,
+        age: apt.age,
+        symptoms: apt.symptoms,
+        appointment_time: apt.scheduled_time,
+        appointment_date: apt.appointment_date,
+        status: apt.status,
+        details: {
+          token: apt.token_number,
+          description: apt.symptoms,
+        },
+        patient: {
+          name: apt.patient_name,
+          age: apt.age,
+          profile_image: apt.patient_image,
+        },
+        sub_patient: {
+          name: apt.patient_name,
+          age: apt.age,
+        }
+      }));
+
+      // Sort appointments by time (earliest first)
+      const sortedAppointments = transformedAppointments.sort((a, b) => {
+        const timeA = a.appointment_time || '00:00';
+        const timeB = b.appointment_time || '00:00';
+        return timeA.localeCompare(timeB);
       });
 
-      console.log('📥 API Response:', response);
-      console.log('📊 Response Status:', response.status);
-      console.log('💾 Response Data:', response.data);
-
-      if (response.data && response.data.status) {
-        console.log('✅ API Response Status:', response.data.status);
-        console.log('📝 API Message:', response.data.message);
-        console.log('📅 Appointments Data:', response.data.data);
-        
-        // Get appointments from doctor-dashboard response
-        const allAppointments = response.data.data?.appointments || [];
-        console.log('📋 All Appointments:', allAppointments);
-        
-        // Sort appointments by time (earliest first)
-        const sortedAppointments = allAppointments.sort((a, b) => {
-          const timeA = a.appointment_time || '00:00';
-          const timeB = b.appointment_time || '00:00';
-          return timeA.localeCompare(timeB);
-        });
-        console.log('⏰ Sorted Appointments by Time:', sortedAppointments);
-        
-        setAppointments(sortedAppointments);
-        setError(null);
-      } else {
-        console.log('⚠️ Invalid API response format');
-        setError('Invalid response format');
-      }
+      console.log('✅ Transformed & Sorted Appointments:', sortedAppointments);
+      setAppointments(sortedAppointments);
+      setError(null);
     } catch (err) {
-      console.error('❌ Error fetching appointments data:', err);
+      console.error('❌ Error fetching appointments:', err.message);
       console.error('❌ Error details:', {
         message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-        statusText: err.response?.statusText
+        stack: err.stack
       });
-      setError('Failed to fetch appointments');
+      setError(err.message || 'Failed to fetch appointments');
     } finally {
       setLoading(false);
     }
@@ -150,23 +156,23 @@ const AppointmentsScreen = ({ navigation }) => {
   );
 
   const renderAppointmentCard = (appointment, index) => (
-    <TouchableOpacity 
-      key={appointment.id || index} 
+    <TouchableOpacity
+      key={appointment.id || index}
       style={[styles.appointmentCard, { backgroundColor: theme.colors.cardBackground }]}
       onPress={() => navigateToAppointmentDetails(appointment)}
       activeOpacity={0.7}
     >
       <View style={styles.appointmentContent}>
         <View style={styles.patientImageContainer}>
-          <Image 
-            source={{ 
-              uri: appointment.patient?.profile_image && appointment.patient.profile_image !== null 
-                ? `${API_BASE_URL.replace('/api', '')}/${appointment.patient.profile_image}`
+          <Image
+            source={{
+              uri: appointment.patient?.profile_image && appointment.patient.profile_image !== null
+                ? `${API_BASE_URL}/${appointment.patient.profile_image}`
                 : 'https://spiderdesk.asia/healto/profile_images/1757571656_stylish-handsome-indian-man-tshirt-pastel-wall 1.jpg',
               headers: {
                 'Accept': 'image/*',
               }
-            }} 
+            }}
             style={styles.patientImage}
             defaultSource={require('../Assets/Images/phone2.png')}
             onError={(error) => {
@@ -177,40 +183,60 @@ const AppointmentsScreen = ({ navigation }) => {
             }}
           />
         </View>
-        
+
         <View style={styles.patientInfo}>
-          <View style={styles.nameTokenRow}>
-            <Text style={[styles.patientName, { color: theme.colors.primary }]}>
-              {appointment.patient?.name || appointment.sub_patient?.name || 'Unknown Patient'}
-            </Text>
-            <Text style={[styles.tokenNumber, { color: theme.colors.primary }]}>
-              #{appointment.details?.token || appointment.token || 'N/A'}
-            </Text>
+          {/* Patient Name */}
+          <Text style={[styles.patientName, { color: theme.colors.primary }]}>
+            {appointment.patient?.name || appointment.sub_patient?.name || 'Unknown Patient'}
+          </Text>
+
+          {/* Patient Details - Columnar layout with aligned labels and values */}
+          <View style={styles.detailsContainer}>
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Age</Text>
+              <Text style={[styles.detailColon, { color: theme.colors.text }]}>:</Text>
+              <Text style={[styles.detailValueText, { color: theme.colors.text }]}>
+                {appointment.patient?.age || appointment.sub_patient?.age || 'N/A'}
+              </Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Symptoms</Text>
+              <Text style={[styles.detailColon, { color: theme.colors.text }]}>:</Text>
+              <Text style={[styles.detailValueText, { color: theme.colors.text }]}>
+                {appointment.details?.description || 'General Consultation'}
+              </Text>
+            </View>
+
+            <View style={styles.detailRow}>
+              <Text style={[styles.detailLabel, { color: theme.colors.text }]}>On</Text>
+              <Text style={[styles.detailColon, { color: theme.colors.text }]}>:</Text>
+              <Text style={[styles.detailValueText, { color: theme.colors.text }]}>
+                {appointment.appointment_time || 'N/A'}
+              </Text>
+            </View>
           </View>
-          
-          <Text style={[styles.patientDetail, { color: theme.colors.text }]}>
-            Age : <Text style={[styles.patientDetailBold, { color: theme.colors.text }]}>{appointment.patient?.age || appointment.sub_patient?.age || 'N/A'}</Text>
-          </Text>
-          
-          <Text style={[styles.patientDetail, { color: theme.colors.text }]}>
-            Symptoms : <Text style={[styles.patientDetailBold, { color: theme.colors.text }]}>{appointment.details?.description || 'General Consultation'}</Text>
-          </Text>
-          
-          <Text style={[styles.patientDetail, { color: theme.colors.text }]}>
-            On : <Text style={[styles.patientDetailBold, { color: theme.colors.text }]}>{appointment.appointment_time || 'N/A'}</Text>
-          </Text>
-          
+
+          {/* Status Badge */}
           <View style={styles.statusContainer}>
-            <View style={[
-              styles.statusBadge,
-              { backgroundColor: appointment.status === 'completed' ? theme.colors.statusCompleted : 
-                               appointment.status === 'scheduled' ? theme.colors.statusScheduled : theme.colors.statusPending }
-            ]}>
+            <View
+              style={[
+                styles.statusBadge,
+                {
+                  backgroundColor:
+                    appointment.status === 'completed'
+                      ? theme.colors.statusCompleted
+                      : appointment.status === 'scheduled'
+                      ? theme.colors.statusScheduled
+                      : theme.colors.statusPending
+                }
+              ]}
+            >
               <Text style={styles.statusText}>{appointment.status}</Text>
             </View>
           </View>
         </View>
-        
+
         <View style={styles.arrowContainer}>
           <Icon name="chevron-right" size={20} color={theme.colors.primary} />
         </View>
@@ -376,8 +402,8 @@ const styles = StyleSheet.create({
   },
   appointmentCard: {
     marginHorizontal: wp('4%'),
-    marginBottom: hp('2%'),
-    borderRadius: wp('3%'),
+    marginBottom: hp('2.2%'),
+    borderRadius: wp('3.5%'),
     padding: wp('4%'),
     shadowColor: '#000',
     shadowOffset: {
@@ -390,29 +416,46 @@ const styles = StyleSheet.create({
   },
   appointmentContent: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   patientImageContainer: {
-    marginRight: wp('4%'),
+    marginRight: wp('3.5%'),
+    marginTop: hp('0.3%'),
   },
   patientImage: {
     width: wp('25%'),
-    height: wp('30%'),
-    borderRadius: wp('2%'),
+    height: wp('25%'),
+    borderRadius: wp('2.5%'),
   },
   patientInfo: {
     flex: 1,
-   // paddingVertical: hp('0.5%'),
-  },
-  nameTokenRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: hp('1%'),
   },
   patientName: {
     fontSize: wp('4.2%'),
     fontFamily: PoppinsFonts.Bold,
+    marginBottom: hp('1%'),
+  },
+  detailsContainer: {
+    marginBottom: hp('1%'),
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: hp('0.45%'),
+  },
+  detailLabel: {
+    fontSize: wp('3.4%'),
+    fontFamily: PoppinsFonts.Regular,
+    width: wp('18%'),
+  },
+  detailColon: {
+    fontSize: wp('3.4%'),
+    fontFamily: PoppinsFonts.Regular,
+    marginHorizontal: wp('1.5%'),
+  },
+  detailValueText: {
+    fontSize: wp('3.4%'),
+    fontFamily: PoppinsFonts.SemiBold,
     flex: 1,
   },
   patientDetail: {
@@ -427,61 +470,44 @@ const styles = StyleSheet.create({
   arrowContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingLeft: wp('2%'),
+    paddingLeft: wp('1%'),
   },
   statusContainer: {
-    marginTop: hp('1%'),
+    marginTop: hp('0.8%'),
     alignItems: 'flex-start',
   },
   statusBadge: {
-    paddingHorizontal: wp('3%'),
-    paddingVertical: hp('0.5%'),
-    borderRadius: wp('2%'),
+    paddingHorizontal: wp('5.5%'),
+    paddingVertical: hp('0.75%'),
+    borderRadius: wp('2.2%'),
   },
   statusText: {
-    fontSize: wp('3%'),
+    fontSize: wp('3.6%'),
     fontFamily: PoppinsFonts.Bold,
     color: '#FFFFFF',
     textTransform: 'capitalize',
   },
   tokenNumber: {
-    fontSize: wp('4%'),
+    fontSize: wp('3.6%'),
     fontFamily: PoppinsFonts.Bold,
     backgroundColor: '#E3F2FD',
     paddingHorizontal: wp('2%'),
     paddingVertical: hp('0.3%'),
     borderRadius: wp('2%'),
     textAlign: 'center',
-    minWidth: wp('8%'),
+    minWidth: wp('9%'),
   },
-  patientDetail: {
-    fontSize: wp('3.5%'),
-    fontFamily: PoppinsFonts.Medium,
-    marginBottom: hp('0.25%'),
+  nameTokenRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: hp('0.8%'),
   },
   subPatientTitle: {
     fontSize: wp('3.2%'),
     fontFamily: PoppinsFonts.Bold,
     marginTop: hp('0.8%'),
     marginBottom: hp('0.3%'),
-  },
-  appointmentStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: wp('2%'),
-  },
-  statusBadge: {
-    paddingHorizontal: wp('3%'),
-    paddingVertical: hp('0.5%'),
-    borderRadius: wp('3%'),
-    marginRight: wp('2%'),
-  },
-  statusText: {
-    color: '#FFFFFF',
-    fontSize: wp('2.8%'),
-    fontFamily: PoppinsFonts.SemiBold,
-    textTransform: 'capitalize',
   },
   noAppointmentsContainer: {
     flex: 1,
