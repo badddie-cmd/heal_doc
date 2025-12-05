@@ -71,14 +71,14 @@ const HomeScreen = ({ navigation, route }) => {
       console.log('=== FETCHING DASHBOARD DATA ===');
       const todayDate = formatTodayDate();
       console.log('📅 Today\'s Date:', todayDate);
-
+      console.log("today date:", todayDate)
       // Call both APIs: doctor profile and appointments
       console.log('📡 Calling API: GET /doctor/profile');
       const profileResponse = await ApiService.getDoctorProfile();
-
+      console.log('profile Response:', JSON.stringify(profileResponse,null,2))
       console.log('📡 Calling API: GET /doctor/appointments');
       const appointmentsResponse = await ApiService.getDoctorAppointments();
-
+      console.log('appointment response:', JSON.stringify(appointmentsResponse,null,2))
       // Check if both API calls were successful
       if (!profileResponse.success) {
         throw new Error(`Failed to fetch doctor profile: ${profileResponse.error}`);
@@ -201,200 +201,47 @@ const HomeScreen = ({ navigation, route }) => {
     navigation.navigate('AppointmentDetails', { appointment });
   };
 
-  // Fetch data on component mount
+  // ============================================================================
+  // LIFECYCLE EFFECTS
+  // ============================================================================
+
+  // Initial load: Fetch dashboard data when component mounts
   useEffect(() => {
-    const initializeData = async () => {
-      // Load doctor info first
-      await loadDoctorInfo();
-    };
-    
-    initializeData();
+    fetchDashboardData();
   }, []);
 
-  // Fetch dashboard data when doctorInfo is available
-  useEffect(() => {
-    if (doctorInfo?.id) {
-      fetchDashboardData();
-    }
-  }, [doctorInfo]);
-
-  // Listen for navigation focus to refresh data when returning from ProfileScreen
+  // Listen for screen focus to refresh data when returning from other screens
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      console.log('🔄 HomeScreen focused - refreshing data...');
-      const refreshData = async () => {
-        await loadDoctorInfo();
-        if (doctorInfo?.id) {
-          await fetchDashboardData();
-        }
-      };
-      refreshData();
+      console.log('🔄 HomeScreen focused - refreshing data');
+      fetchDashboardData();
     });
 
     return unsubscribe;
-  }, [navigation, doctorInfo]);
+  }, [navigation]);
 
-  // Handle refresh parameter from ProfileScreen
+  // Handle explicit refresh from navigation parameters
   useEffect(() => {
     if (route?.params?.refresh) {
-      console.log('🔄 Refresh parameter received - refreshing all data...');
-      refreshAllData();
-      // Clear the refresh parameter
+      console.log('🔄 Refresh parameter received');
+      fetchDashboardData();
       navigation.setParams({ refresh: false });
     }
   }, [route?.params?.refresh]);
 
-  // Function to load doctor information from API and return it
-  const loadDoctorInfoAndReturn = async () => {
-    try {
-      console.log('🔍 Loading Doctor Information from API...');
+  // ============================================================================
+  // ACTION HANDLERS
+  // ============================================================================
 
-      // Get doctor ID from login session data
-      const sessionData = await AsyncStorage.getItem('doctorLoginSession');
-      console.log('🔍 Retrieved doctorLoginSession:', !!sessionData ? 'Found' : 'Not found');
-
-      if (!sessionData) {
-        throw new Error('Login session not found in storage');
-      }
-
-      const parsedData = JSON.parse(sessionData);
-      if (!parsedData.userData || !parsedData.userData.id) {
-        throw new Error('Doctor ID not found in login session');
-      }
-
-      const doctorId = parsedData.userData.id;
-      console.log('🔍 Retrieved doctor ID from session:', doctorId);
-
-      // Call API to get doctor edit data
-      const response = await ApiService.getDoctorEditData(doctorId);
-      console.log('🔍 API Response:', JSON.stringify(response, null, 2));
-      
-      if (response.success) {
-        console.log('✅ API call successful');
-        if (response.data && response.data.status) {
-          const doctorData = response.data.data;
-          console.log('🩺 Doctor Data from API:', doctorData);
-          
-          // Extract doctor information (same structure as ProfileScreen)
-          const doctorInfo = {
-            id: doctorData.id,
-            name: doctorData.name,
-            email: doctorData.email,
-            phone: doctorData.phone,
-            profile_image: doctorData.profile_image,
-            specialization_id: doctorData.specialization_id,
-            experience_years: doctorData.experience_years,
-            qualification: doctorData.qualification,
-            rating: doctorData.rating,
-            info: doctorData.info,
-            gender: doctorData.gender,
-            blood_group: doctorData.blood_group,
-            address: doctorData.address,
-            dob: doctorData.dob,
-            reviews: doctorData.reviews,
-            clinic_id: doctorData.clinic_id,
-            created_at: doctorData.created_at,
-            updated_at: doctorData.updated_at
-          };
-          
-          console.log('✅ Extracted Doctor Info:', doctorInfo);
-          console.log('👨‍⚕️ Doctor Name:', doctorInfo.name);
-          console.log('🎓 Qualification:', doctorInfo.qualification);
-          console.log('⏰ Experience:', doctorInfo.experience_years, 'years');
-          console.log('⭐ Rating:', doctorInfo.rating);
-          console.log('📧 Email:', doctorInfo.email);
-          console.log('📱 Phone:', doctorInfo.phone);
-          console.log('🏥 Specialization ID:', doctorInfo.specialization_id);
-          console.log('📍 Address:', doctorInfo.address);
-          console.log('🖼️ Profile Image:', doctorInfo.profile_image);
-          console.log('🖼️ Full Image URL:', `${API_BASE_URL.replace('/api', '')}/${doctorInfo.profile_image}`);
-          
-          setDoctorInfo(doctorInfo);
-          
-          // Save doctor ID for API calls
-          await setDoctorId(doctorData.id.toString());
-          console.log('💾 Doctor ID saved:', doctorData.id.toString());
-          
-          console.log('✅ Doctor information loaded successfully from API');
-          return doctorInfo;
-        } else {
-          console.log('❌ API response data.status is false:', response.data);
-          throw new Error(response.data?.message || 'API returned status false');
-        }
-      } else {
-        console.log('❌ API call failed:', response.error);
-        throw new Error(response.error || 'Failed to load doctor information');
-      }
-    } catch (error) {
-      console.error('❌ Error loading doctor info:', error);
-      setError(error.message);
-      throw error;
-    }
-  };
-
-  // Function to load doctor information from API
-  const loadDoctorInfo = async () => {
-    try {
-      await loadDoctorInfoAndReturn();
-    } catch (error) {
-      console.error('❌ Error loading doctor info:', error);
-      setError(error.message);
-    }
-  };
-
-  // Pull to refresh function
+  // Pull-to-refresh handler
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      console.log('🔄 Refreshing data...');
-      // Load doctor info first, then fetch dashboard data
-      await loadDoctorInfo();
       await fetchDashboardData();
-      console.log('✅ Data refreshed successfully');
-    } catch (error) {
-      console.error('❌ Error refreshing data:', error);
     } finally {
       setRefreshing(false);
     }
   };
-
-  // General refresh function that can be called from anywhere
-  const refreshAllData = async () => {
-    try {
-      console.log('🔄 Refreshing all data...');
-      await loadDoctorInfo();
-      if (doctorInfo?.id) {
-        await fetchDashboardData();
-      }
-      console.log('✅ All data refreshed successfully');
-    } catch (error) {
-      console.error('❌ Error refreshing all data:', error);
-    }
-  };
-
-  // Log dashboard data whenever it changes
-  useEffect(() => {
-    if (dashboardData) {
-      console.log('📊 Dashboard Data Updated:', dashboardData);
-      console.log('📊 Dashboard Data Structure:', JSON.stringify(dashboardData, null, 2));
-      console.log('📈 Total Patients Today:', dashboardData.total_patients_today);
-      console.log('⏳ Pending Patients:', dashboardData.pending_patients);
-      console.log('📅 Appointments Count:', dashboardData.appointments?.length || 0);
-      
-      if (dashboardData.appointments && dashboardData.appointments.length > 0) {
-        console.log('📅 Appointments Details:', dashboardData.appointments);
-        // Log each appointment individually
-        dashboardData.appointments.forEach((appointment, index) => {
-          console.log(`👤 Appointment ${index + 1}:`, {
-            name: appointment.patient_name,
-            age: appointment.age,
-            symptoms: appointment.symptoms,
-            time: appointment.appointment_time
-          });
-        });
-      }
-    }
-  }, [dashboardData]);
 
   // Loading component
   if (loading) {
