@@ -11,10 +11,11 @@ import {
   Modal,
   TextInput,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import {
   widthPercentageToDP as wp,
@@ -32,8 +33,20 @@ const SettingsScreen = ({ navigation, onLogout }) => {
   const [selectedReason, setSelectedReason] = useState('');
   const [customReason, setCustomReason] = useState('');
   const [showReasonDropdown, setShowReasonDropdown] = useState(false);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  // ✅ NEW: Date/Time picker states for unavailability period
+  const [unavailableFromDate, setUnavailableFromDate] = useState(new Date());
+  const [unavailableFromTime, setUnavailableFromTime] = useState(new Date());
+  const [showFromDatePicker, setShowFromDatePicker] = useState(false);
+  const [showFromTimePicker, setShowFromTimePicker] = useState(false);
+  const [unavailableFromString, setUnavailableFromString] = useState('');
+
+  const [unavailableUntilDate, setUnavailableUntilDate] = useState(new Date());
+  const [unavailableUntilTime, setUnavailableUntilTime] = useState(new Date());
+  const [showUntilDatePicker, setShowUntilDatePicker] = useState(false);
+  const [showUntilTimePicker, setShowUntilTimePicker] = useState(false);
+  const [unavailableUntilString, setUnavailableUntilString] = useState('');
 
   const unavailabilityReasons = [
     'Personal Emergency',
@@ -44,6 +57,23 @@ const SettingsScreen = ({ navigation, onLogout }) => {
     'Other'
   ];
 
+  // ✅ NEW: Format date and time objects to "YYYY-MM-DD HH:MM:SS" format
+  const formatDateTime = (date, time) => {
+    if (!date || !time) return '';
+
+    // Extract date components
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+
+    // Extract time components
+    const hours = String(time.getHours()).padStart(2, '0');
+    const minutes = String(time.getMinutes()).padStart(2, '0');
+    const seconds = '00';
+
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
+
   // Load availability status on component mount
   useEffect(() => {
     loadAvailabilityStatus();
@@ -51,9 +81,18 @@ const SettingsScreen = ({ navigation, onLogout }) => {
 
   const loadAvailabilityStatus = async () => {
     try {
-      const availability = await AsyncStorage.getItem('doctor_availability');
-      if (availability !== null) {
-        setIsAvailable(JSON.parse(availability));
+      console.log('📡 Fetching doctor profile to get availability status...');
+      const response = await ApiService.getDoctorProfile();
+
+      if (response.success) {
+        const doctorData = response.data?.data?.doctor;
+        if (doctorData) {
+          const available = doctorData.is_available === 1;
+          console.log('✅ Availability status loaded:', available ? 'Available' : 'Unavailable');
+          setIsAvailable(available);
+        }
+      } else {
+        console.error('❌ Failed to fetch doctor profile:', response.error);
       }
     } catch (error) {
       console.error('❌ Error loading availability status:', error);
@@ -66,107 +105,199 @@ const SettingsScreen = ({ navigation, onLogout }) => {
       setShowUnavailableModal(true);
     } else {
       // If currently unavailable, make available
-      await updateAvailability(true, '');
+      await makeAvailable();
     }
   };
 
-  const updateAvailability = async (available, reason) => {
+  const makeAvailable = async () => {
     try {
-      setIsAvailable(available);
-      await AsyncStorage.setItem('doctor_availability', JSON.stringify(available));
-      if (!available && reason) {
-        await AsyncStorage.setItem('unavailability_reason', reason);
-      }
-      console.log('✅ Availability status updated:', available ? 'Available' : 'Unavailable');
-      if (!available) {
-        console.log('📝 Unavailability reason:', reason);
+      setIsLoading(true);
+      console.log('🔄 Calling markDoctorAvailable API...');
+
+      const response = await ApiService.markDoctorAvailable();
+      console.log('✅ Mark Available Response:', JSON.stringify(response, null, 2));
+
+      if (response.success) {
+        // Refetch profile to get updated availability status
+        console.log('📡 Refetching doctor profile...');
+        await loadAvailabilityStatus();
+
+        Alert.alert(
+          'Success',
+          'You are now available for appointments!',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert(
+          'Error',
+          response.error || 'Failed to update availability. Please try again.',
+          [{ text: 'OK' }]
+        );
       }
     } catch (error) {
-      console.error('❌ Error saving availability status:', error);
+      console.error('❌ Error making doctor available:', error);
+      Alert.alert(
+        'Error',
+        'An unexpected error occurred. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ✅ NEW: Handle from date picker change
+  const handleFromDateChange = (event, selectedDate) => {
+    if (event.type === 'dismissed') {
+      setShowFromDatePicker(false);
+      return;
+    }
+
+    if (selectedDate) {
+      setUnavailableFromDate(selectedDate);
+      // Update the display string
+      const formattedDateTime = formatDateTime(selectedDate, unavailableFromTime);
+      setUnavailableFromString(formattedDateTime);
+    }
+
+    if (Platform.OS === 'android') {
+      setShowFromDatePicker(false);
+    }
+  };
+
+  // ✅ NEW: Handle from time picker change
+  const handleFromTimeChange = (event, selectedTime) => {
+    if (event.type === 'dismissed') {
+      setShowFromTimePicker(false);
+      return;
+    }
+
+    if (selectedTime) {
+      setUnavailableFromTime(selectedTime);
+      // Update the display string
+      const formattedDateTime = formatDateTime(unavailableFromDate, selectedTime);
+      setUnavailableFromString(formattedDateTime);
+    }
+
+    if (Platform.OS === 'android') {
+      setShowFromTimePicker(false);
+    }
+  };
+
+  // ✅ NEW: Handle until date picker change
+  const handleUntilDateChange = (event, selectedDate) => {
+    if (event.type === 'dismissed') {
+      setShowUntilDatePicker(false);
+      return;
+    }
+
+    if (selectedDate) {
+      setUnavailableUntilDate(selectedDate);
+      // Update the display string
+      const formattedDateTime = formatDateTime(selectedDate, unavailableUntilTime);
+      setUnavailableUntilString(formattedDateTime);
+    }
+
+    if (Platform.OS === 'android') {
+      setShowUntilDatePicker(false);
+    }
+  };
+
+  // ✅ NEW: Handle until time picker change
+  const handleUntilTimeChange = (event, selectedTime) => {
+    if (event.type === 'dismissed') {
+      setShowUntilTimePicker(false);
+      return;
+    }
+
+    if (selectedTime) {
+      setUnavailableUntilTime(selectedTime);
+      // Update the display string
+      const formattedDateTime = formatDateTime(unavailableUntilDate, selectedTime);
+      setUnavailableUntilString(formattedDateTime);
+    }
+
+    if (Platform.OS === 'android') {
+      setShowUntilTimePicker(false);
     }
   };
 
   const handleSubmitUnavailability = async () => {
     const reason = selectedReason === 'Other' ? customReason : selectedReason;
+
+    // ✅ NEW: Validate reason
     if (!reason.trim()) {
       Alert.alert('Error', 'Please select or enter a reason for unavailability');
       return;
     }
-    if (!startDate) {
-      Alert.alert('Error', 'Please enter a start date (YYYY-MM-DD)');
+
+    // ✅ NEW: Validate start date/time is filled
+    if (!unavailableFromString.trim()) {
+      Alert.alert('Error', 'Please select start date and time');
       return;
     }
-    if (!endDate) {
-      Alert.alert('Error', 'Please enter an end date (YYYY-MM-DD)');
+
+    // ✅ NEW: Validate end date/time is filled
+    if (!unavailableUntilString.trim()) {
+      Alert.alert('Error', 'Please select end date and time');
       return;
     }
-    if (new Date(startDate) > new Date(endDate)) {
-      Alert.alert('Error', 'End date must be after start date');
-      return;
-    }
-    
+
+    // ✅ NEW: Validate end datetime is after start datetime
     try {
-      // Get doctor ID from AsyncStorage
-      const userLoginData = await AsyncStorage.getItem('userLoginData');
-      if (!userLoginData) {
-        Alert.alert('Error', 'Doctor ID not found. Please login again.');
+      const fromDateTime = new Date(unavailableFromString.replace(' ', 'T'));
+      const untilDateTime = new Date(unavailableUntilString.replace(' ', 'T'));
+
+      if (isNaN(fromDateTime.getTime()) || isNaN(untilDateTime.getTime())) {
+        Alert.alert('Error', 'Invalid date/time format');
         return;
       }
 
-      const parsedData = JSON.parse(userLoginData);
-      const doctorId = parsedData.userData?.data?.id;
-      
-      if (!doctorId) {
-        Alert.alert('Error', 'Doctor ID not found in login data');
+      if (untilDateTime <= fromDateTime) {
+        Alert.alert('Error', 'End date/time must be after start date/time');
         return;
       }
+    } catch (error) {
+      Alert.alert('Error', 'Invalid date/time. Please check and try again.');
+      return;
+    }
 
-      // Convert formatted dates (YYYY/MM/DD) to API format (YYYY-MM-DD)
-      const apiStartDate = startDate.replace(/\//g, '-');
-      const apiEndDate = endDate.replace(/\//g, '-');
+    try {
+      setIsLoading(true);
+      // ✅ NEW: Console log all parameters
+      console.log('🔍 Calling markDoctorUnavailable API with:');
+      console.log('  Reason:', reason);
+      console.log('  From:', unavailableFromString);
+      console.log('  Until:', unavailableUntilString);
 
-      console.log('🔍 Calling doctor-inactive API with:', {
-        doctor_id: doctorId,
-        start_date: apiStartDate,
-        end_date: apiEndDate,
-        content: reason,
-        clinic_id: 1
-      });
-
-      // Call doctor-inactive API
-      const response = await ApiService.markDoctorInactive(
-        doctorId,
-        apiStartDate,
-        apiEndDate,
+      // ✅ UPDATED: Pass all 3 required parameters
+      const response = await ApiService.markDoctorUnavailable(
         reason,
-        1 // clinic_id
+        unavailableFromString,
+        unavailableUntilString
       );
+      console.log('✅ Mark Unavailable Response:', JSON.stringify(response, null, 2));
 
       if (response.success) {
-        console.log('✅ Doctor marked as inactive successfully');
-        
-        // Update local availability status
-        const unavailabilityData = {
-          reason,
-          startDate,
-          endDate
-        };
-        
-        updateAvailability(false, JSON.stringify(unavailabilityData));
-        setShowUnavailableModal(false);
-        setSelectedReason('');
-        setCustomReason('');
-        setStartDate('');
-        setEndDate('');
-        
-        Alert.alert('Success', 'You have been marked as unavailable for the selected period.');
+        console.log('✅ Doctor marked as unavailable successfully');
+
+        // Refetch profile to get updated availability status
+        console.log('📡 Refetching doctor profile...');
+        await loadAvailabilityStatus();
+
+        // Close modal and reset form
+        handleCloseModal();
+
+        Alert.alert('Success', 'You have been marked as unavailable.');
       } else {
-        console.error('❌ Failed to mark doctor as inactive:', response.error);
+        console.error('❌ Failed to mark doctor as unavailable:', response.error);
         Alert.alert('Error', `Failed to update availability: ${response.error}`);
       }
     } catch (error) {
-      console.error('❌ Error calling doctor-inactive API:', error);
+      console.error('❌ Error calling markDoctorUnavailable API:', error);
       Alert.alert('Error', 'An error occurred while updating availability. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -174,48 +305,20 @@ const SettingsScreen = ({ navigation, onLogout }) => {
     setShowUnavailableModal(false);
     setSelectedReason('');
     setCustomReason('');
-    setStartDate('');
-    setEndDate('');
     setShowReasonDropdown(false);
+    // ✅ NEW: Reset date/time picker states
+    setUnavailableFromDate(new Date());
+    setUnavailableFromTime(new Date());
+    setShowFromDatePicker(false);
+    setShowFromTimePicker(false);
+    setUnavailableFromString('');
+    setUnavailableUntilDate(new Date());
+    setUnavailableUntilTime(new Date());
+    setShowUntilDatePicker(false);
+    setShowUntilTimePicker(false);
+    setUnavailableUntilString('');
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  // Manual date/time input handlers with automatic formatting
-  const formatDateInput = (value) => {
-    // Remove all non-numeric characters
-    const numericValue = value.replace(/\D/g, '');
-    
-    // Limit to 8 digits (YYYYMMDD)
-    const limitedValue = numericValue.slice(0, 8);
-    
-    // Format as YYYY/MM/DD
-    if (limitedValue.length <= 4) {
-      return limitedValue;
-    } else if (limitedValue.length <= 6) {
-      return `${limitedValue.slice(0, 4)}/${limitedValue.slice(4)}`;
-    } else {
-      return `${limitedValue.slice(0, 4)}/${limitedValue.slice(4, 6)}/${limitedValue.slice(6)}`;
-    }
-  };
-
-  const handleManualDateInput = (type, value) => {
-    const formattedValue = formatDateInput(value);
-    
-    if (type === 'start') {
-      setStartDate(formattedValue);
-    } else {
-      setEndDate(formattedValue);
-    }
-  };
   const handleLogout = () => {
     Alert.alert(
       'Logout',
@@ -326,7 +429,7 @@ const SettingsScreen = ({ navigation, onLogout }) => {
           id: 'history',
           title: 'Appointment History\'s',
           icon: 'calendar-alt',
-          onPress: () => console.log('Appointment History'),
+          onPress: () => navigation.navigate('AppointmentHistory'),
         },
       ],
     },
@@ -492,6 +595,9 @@ const SettingsScreen = ({ navigation, onLogout }) => {
               </TouchableOpacity>
             </View>
 
+            {/* ✅ NEW: ScrollView to handle modal content overflow */}
+            <ScrollView showsVerticalScrollIndicator={false} style={styles.modalScrollContent}>
+
             <Text style={[styles.modalDescription, { color: theme.colors.textSecondary }]}>
               Let patients know why you're currently not available for appointments.
             </Text>
@@ -537,7 +643,7 @@ const SettingsScreen = ({ navigation, onLogout }) => {
                   Other (enter manually)
                 </Text>
                 <TextInput
-                  style={[styles.customReasonInput, { 
+                  style={[styles.customReasonInput, {
                     backgroundColor: theme.colors.inputBackground,
                     borderColor: theme.colors.inputBorder,
                     color: theme.colors.text
@@ -552,50 +658,136 @@ const SettingsScreen = ({ navigation, onLogout }) => {
               </View>
             )}
 
-            <View style={styles.dateSection}>
-              <Text style={[styles.dateLabel, { color: theme.colors.text }]}>Unavailability Period</Text>
-              
-              <View style={styles.dateRow}>
-                <View style={styles.dateField}>
-                  <Text style={[styles.dateFieldLabel, { color: theme.colors.text }]}>Start Date</Text>
-                  <TextInput
-                    style={[styles.dateInput, { 
-                      backgroundColor: theme.colors.inputBackground,
-                      borderColor: theme.colors.inputBorder,
-                      color: theme.colors.text
-                    }]}
-                    placeholder="YYYY/MM/DD"
-                    placeholderTextColor={theme.colors.textTertiary}
-                    value={startDate}
-                    onChangeText={(value) => handleManualDateInput('start', value)}
-                  />
-                </View>
+            {/* ✅ NEW: Unavailable From Section */}
+            <View style={styles.dateTimeSection}>
+              <Text style={[styles.dateTimeSectionTitle, { color: theme.colors.text }]}>
+                Unavailable From
+              </Text>
 
-                <View style={styles.dateField}>
-                  <Text style={[styles.dateFieldLabel, { color: theme.colors.text }]}>End Date</Text>
-                  <TextInput
-                    style={[styles.dateInput, { 
-                      backgroundColor: theme.colors.inputBackground,
-                      borderColor: theme.colors.inputBorder,
-                      color: theme.colors.text
-                    }]}
-                    placeholder="YYYY/MM/DD"
-                    placeholderTextColor={theme.colors.textTertiary}
-                    value={endDate}
-                    onChangeText={(value) => handleManualDateInput('end', value)}
-                  />
-                </View>
-              </View>
+              {/* From Date Picker */}
+              <Text style={[styles.dateTimeLabel, { color: theme.colors.text }]}>
+                Date
+              </Text>
+              <TouchableOpacity
+                style={[styles.dateTimeButton, { borderColor: theme.colors.primary }]}
+                onPress={() => setShowFromDatePicker(true)}
+              >
+                <Icon name="calendar-alt" size={16} color={theme.colors.primary} style={{ marginRight: wp('2%') }} />
+                <Text style={[styles.dateTimeButtonText, { color: theme.colors.text }]}>
+                  {unavailableFromDate ? unavailableFromDate.toLocaleDateString() : 'Select date'}
+                </Text>
+              </TouchableOpacity>
+
+              {showFromDatePicker && (
+                <DateTimePicker
+                  value={unavailableFromDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleFromDateChange}
+                />
+              )}
+
+              {/* From Time Picker */}
+              <Text style={[styles.dateTimeLabel, { color: theme.colors.text, marginTop: hp('1.5%') }]}>
+                Time
+              </Text>
+              <TouchableOpacity
+                style={[styles.dateTimeButton, { borderColor: theme.colors.primary }]}
+                onPress={() => setShowFromTimePicker(true)}
+              >
+                <Icon name="clock" size={16} color={theme.colors.primary} style={{ marginRight: wp('2%') }} />
+                <Text style={[styles.dateTimeButtonText, { color: theme.colors.text }]}>
+                  {unavailableFromTime ? unavailableFromTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Select time'}
+                </Text>
+              </TouchableOpacity>
+
+              {showFromTimePicker && (
+                <DateTimePicker
+                  value={unavailableFromTime}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleFromTimeChange}
+                />
+              )}
             </View>
 
+            {/* ✅ NEW: Unavailable Until Section */}
+            <View style={styles.dateTimeSection}>
+              <Text style={[styles.dateTimeSectionTitle, { color: theme.colors.text }]}>
+                Unavailable Until
+              </Text>
+
+              {/* Until Date Picker */}
+              <Text style={[styles.dateTimeLabel, { color: theme.colors.text }]}>
+                Date
+              </Text>
+              <TouchableOpacity
+                style={[styles.dateTimeButton, { borderColor: theme.colors.primary }]}
+                onPress={() => setShowUntilDatePicker(true)}
+              >
+                <Icon name="calendar-alt" size={16} color={theme.colors.primary} style={{ marginRight: wp('2%') }} />
+                <Text style={[styles.dateTimeButtonText, { color: theme.colors.text }]}>
+                  {unavailableUntilDate ? unavailableUntilDate.toLocaleDateString() : 'Select date'}
+                </Text>
+              </TouchableOpacity>
+
+              {showUntilDatePicker && (
+                <DateTimePicker
+                  value={unavailableUntilDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleUntilDateChange}
+                />
+              )}
+
+              {/* Until Time Picker */}
+              <Text style={[styles.dateTimeLabel, { color: theme.colors.text, marginTop: hp('1.5%') }]}>
+                Time
+              </Text>
+              <TouchableOpacity
+                style={[styles.dateTimeButton, { borderColor: theme.colors.primary }]}
+                onPress={() => setShowUntilTimePicker(true)}
+              >
+                <Icon name="clock" size={16} color={theme.colors.primary} style={{ marginRight: wp('2%') }} />
+                <Text style={[styles.dateTimeButtonText, { color: theme.colors.text }]}>
+                  {unavailableUntilTime ? unavailableUntilTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Select time'}
+                </Text>
+              </TouchableOpacity>
+
+              {showUntilDatePicker && (
+                <DateTimePicker
+                  value={unavailableUntilDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleUntilDateChange}
+                />
+              )}
+
+              {showUntilTimePicker && (
+                <DateTimePicker
+                  value={unavailableUntilTime}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleUntilTimeChange}
+                />
+              )}
+            </View>
+
+            </ScrollView>
+            {/* END: ScrollView */}
 
             <TouchableOpacity
-              style={[styles.submitButton, { borderColor: theme.colors.primary }]}
+              style={[styles.submitButton, { borderColor: theme.colors.primary, opacity: isLoading ? 0.7 : 1 }]}
               onPress={handleSubmitUnavailability}
+              disabled={isLoading}
             >
-              <Text style={[styles.submitButtonText, { color: theme.colors.primary }]}>
-                Submit
-              </Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+              ) : (
+                <Text style={[styles.submitButtonText, { color: theme.colors.primary }]}>
+                  Submit
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -731,7 +923,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: wp('4%'),
     padding: wp('5%'),
-    maxHeight: hp('70%'),
+    maxHeight: hp('85%'),  // ✅ INCREASED: To accommodate date/time sections with scrolling
   },
   modalHeader: {
     flexDirection: 'row',
@@ -752,6 +944,10 @@ const styles = StyleSheet.create({
     fontFamily: PoppinsFonts.Regular,
     marginBottom: hp('3%'),
     lineHeight: wp('4.5%'),
+  },
+  // ✅ NEW: Style for scrollable modal content
+  modalScrollContent: {
+    flexGrow: 0,
   },
   reasonSection: {
     marginBottom: hp('3%'),
@@ -868,6 +1064,35 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     fontSize: wp('3.2%'),
     fontFamily: PoppinsFonts.Regular,
+  },
+  // ✅ NEW: Styles for date/time picker sections
+  dateTimeSection: {
+    marginBottom: hp('3%'),
+  },
+  dateTimeSectionTitle: {
+    fontSize: wp('4%'),
+    fontFamily: PoppinsFonts.Bold,
+    marginBottom: hp('1.5%'),
+  },
+  dateTimeLabel: {
+    fontSize: wp('3.5%'),
+    fontFamily: PoppinsFonts.Medium,
+    marginBottom: hp('0.8%'),
+  },
+  dateTimeButton: {
+    borderWidth: 1,
+    borderRadius: wp('2%'),
+    paddingHorizontal: wp('3%'),
+    paddingVertical: hp('1.2%'),
+    marginBottom: hp('1.5%'),
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateTimeButtonText: {
+    fontSize: wp('3.5%'),
+    fontFamily: PoppinsFonts.Regular,
+    marginLeft: wp('2%'),
+    flex: 1,
   },
 });
 
