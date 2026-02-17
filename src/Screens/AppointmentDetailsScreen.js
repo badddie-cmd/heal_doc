@@ -110,9 +110,28 @@ const AppointmentDetailsScreen = ({ route, navigation }) => {
     }
   };
 
+  // Handle appointment started action
+  const handleAppointmentStarted = () => {
+    Alert.alert(
+      'Start Appointment',
+      'Are you sure you want to start this appointment?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Start',
+          style: 'default',
+          onPress: () => {
+            startAppointment();
+          },
+        },
+      ]
+    );
+  };
+
+  // Handle appointment finished action
   const handleAppointmentFinished = () => {
     Alert.alert(
-      'Appointment Finished',
+      'Finish Appointment',
       'Are you sure you want to mark this appointment as finished?',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -127,33 +146,90 @@ const AppointmentDetailsScreen = ({ route, navigation }) => {
     );
   };
 
-  const finishAppointment = async () => {
+  // Start appointment
+  const startAppointment = async () => {
     try {
       setIsLoading(true);
-      
-      // Get current time in HH:MM:SS format
-      const delayTime = TimeUtils.getCurrentTimeFormatted();
-      
-      // Get appointment ID
+
       const appointmentId = appointment.id || appointment.appointment_id;
-      
+
       if (!appointmentId) {
         Alert.alert('Error', 'Appointment ID not found');
         return;
       }
 
-      console.log('Finishing appointment with data:', {
-        appointment_id: appointmentId,
-        delay_time: delayTime
-      });
+      console.log('🚀 Starting appointment with ID:', appointmentId);
 
-      // Call API to update appointment
-      const response = await ApiService.updateAppointment(appointmentId, delayTime);
-      
+      // Call API to start appointment
+      const response = await ApiService.startAppointment(appointmentId);
+
+      console.log('✅ Start Appointment Response:', JSON.stringify(response, null, 2));
+
       if (response.success) {
-        // Update appointment status to completed locally
-        appointment.status = 'completed';
-        
+        // Refetch appointment details to get latest status
+        console.log('🔄 Refetching appointment details after start...');
+        await fetchAppointmentDetails();
+
+        Alert.alert(
+          'Success',
+          'Appointment has been started successfully!',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                console.log('🔙 Navigating back to AppointmentsScreen...');
+                // Navigate back to AppointmentsScreen with refresh flag
+                navigation.navigate('Appointments', {
+                  refreshAppointments: true,
+                  appointmentUpdated: true
+                });
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Error',
+          response.error || 'Failed to start appointment. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('❌ Error starting appointment:', error);
+      Alert.alert(
+        'Error',
+        'An unexpected error occurred. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Finish appointment
+  const finishAppointment = async () => {
+    try {
+      setIsLoading(true);
+
+      const appointmentId = appointment.id || appointment.appointment_id;
+
+      if (!appointmentId) {
+        Alert.alert('Error', 'Appointment ID not found');
+        return;
+      }
+
+      console.log('✋ Finishing appointment with ID:', appointmentId);
+
+      // Call API to end appointment
+      const response = await ApiService.endAppointment(appointmentId);
+
+      console.log('✅ End Appointment Response:', JSON.stringify(response, null, 2));
+
+      if (response.success) {
+        // Refetch appointment details to get latest status
+        console.log('🔄 Refetching appointment details after finish...');
+        await fetchAppointmentDetails();
+
         Alert.alert(
           'Success',
           'Appointment has been marked as finished successfully!',
@@ -161,20 +237,25 @@ const AppointmentDetailsScreen = ({ route, navigation }) => {
             {
               text: 'OK',
               onPress: () => {
-                navigation.goBack();
-              },
-            },
+                console.log('🔙 Navigating back to AppointmentsScreen...');
+                // Navigate back to AppointmentsScreen with refresh flag
+                navigation.navigate('Appointments', {
+                  refreshAppointments: true,
+                  appointmentUpdated: true
+                });
+              }
+            }
           ]
         );
       } else {
         Alert.alert(
           'Error',
-          response.error || 'Failed to update appointment. Please try again.',
+          response.error || 'Failed to finish appointment. Please try again.',
           [{ text: 'OK' }]
         );
       }
     } catch (error) {
-      console.error('Error finishing appointment:', error);
+      console.error('❌ Error finishing appointment:', error);
       Alert.alert(
         'Error',
         'An unexpected error occurred. Please try again.',
@@ -248,9 +329,18 @@ const AppointmentDetailsScreen = ({ route, navigation }) => {
             <View style={styles.profileImageContainer}>
               <Image
                 source={{
-                  uri: appointment.patient?.profile_image && appointment.patient.profile_image !== null
-                    ? `${API_BASE_URL}/${appointment.patient.profile_image}`
-                    : 'https://spiderdesk.asia/healto/profile_images/1757571656_stylish-handsome-indian-man-tshirt-pastel-wall 1.jpg',
+                  uri: (() => {
+                    // Try profile_image from patient object (API response)
+                    if (appointment.patient?.profile_image && appointment.patient.profile_image !== null) {
+                      if (appointment.patient.profile_image.startsWith('http')) {
+                        return appointment.patient.profile_image;  // Use full URL as-is
+                      }
+                      return `${API_BASE_URL}/${appointment.patient.profile_image}`;  // Prepend for relative path
+                    }
+
+                    // Fallback to default image
+                    return 'https://spiderdesk.asia/healto/profile_images/1757571656_stylish-handsome-indian-man-tshirt-pastel-wall 1.jpg';
+                  })(),
                   headers: {
                     'Accept': 'image/*',
                   }
@@ -272,7 +362,7 @@ const AppointmentDetailsScreen = ({ route, navigation }) => {
                 <Text style={[styles.nameText, { color: theme.colors.primary }]}>{appointment.patient?.name || 'Unknown Patient'}</Text>
               </Text>
               <Text style={[styles.patientInfo, { color: theme.colors.text }]}>
-                Contact : {appointment.patient?.phone_number || 'N/A'}
+                Contact : {appointment.patient?.phone || 'N/A'}
               </Text>
             </View>
           </View>
@@ -287,30 +377,39 @@ const AppointmentDetailsScreen = ({ route, navigation }) => {
                 <Text style={[styles.labelText, { color: theme.colors.text }]}>Name : </Text>
                 <Text style={[styles.nameText, { color: theme.colors.primary }]}>{appointment.sub_patient.name}</Text>
               </Text>
-              <Text style={[styles.patientInfo, { color: theme.colors.text }]}>
-                Age : {appointment.sub_patient.age || 'N/A'}
-              </Text>
-              <Text style={[styles.patientInfo, { color: theme.colors.text }]}>
-                Gender : {appointment.sub_patient.gender || 'N/A'}
-              </Text>
-              <Text style={[styles.patientInfo, { color: theme.colors.text }]}>
-                Phone : {appointment.sub_patient.phone_number || 'N/A'}
-              </Text>
-              <Text style={[styles.patientInfo, { color: theme.colors.text }]}>
-                Appointment Time : {appointment.appointment_time || 'N/A'}
-              </Text>
+
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Age : </Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{appointment.sub_patient.age || 'N/A'}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Gender : </Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{appointment.sub_patient.gender || 'N/A'}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Phone : </Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{appointment.sub_patient.phone_number || appointment.patient?.phone || 'N/A'}</Text>
+              </View>
+
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Appointment Time : </Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{appointment.appointment_time || 'N/A'}</Text>
+              </View>
               
               <View style={styles.tokenContainer}>
                 <Text style={[styles.tokenLabel, { color: theme.colors.text }]}>Token No : </Text>
                 <View style={styles.tokenBadge}>
                   <Text style={styles.tokenNumber}>
-                    {appointment.details?.token || appointment.id}
+                    {appointment.token || appointment.details?.token || appointment.id}
                   </Text>
                 </View>
               </View>
-              <Text style={[styles.patientInfo, { color: theme.colors.text }]}>
-                Email : {appointment.sub_patient.email || 'N/A'}
-              </Text>
+              <View style={styles.detailRow}>
+                <Text style={[styles.detailLabel, { color: theme.colors.text }]}>Email : </Text>
+                <Text style={[styles.detailValue, { color: theme.colors.text }]}>{appointment.sub_patient.email || 'N/A'}</Text>
+              </View>
             </View>
           </View>
         )}
@@ -327,17 +426,45 @@ const AppointmentDetailsScreen = ({ route, navigation }) => {
       </ScrollView>
       )}
 
-      {/* Appointment Finished Button - Only show if appointment is not completed */}
-      {!dataLoading && !error && appointment.status !== 'completed' && (
+      {/* Appointment Started Button - Show when status is 'scheduled' */}
+      {!dataLoading && !error && appointment.status === 'scheduled' && (
         <View style={[styles.buttonContainer, { backgroundColor: theme.colors.background }]}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
-              styles.finishButton, 
-              { 
+              styles.finishButton,
+              {
                 backgroundColor: isLoading ? '#CCCCCC' : theme.colors.primary,
                 opacity: isLoading ? 0.7 : 1
               }
-            ]} 
+            ]}
+            onPress={handleAppointmentStarted}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text style={[styles.finishButtonText, { marginLeft: wp('2%') }]}>
+                  Starting...
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.finishButtonText}>Appointment Started</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Appointment Finished Button - Show when status is 'in_progress' */}
+      {!dataLoading && !error && appointment.status === 'in_progress' && (
+        <View style={[styles.buttonContainer, { backgroundColor: theme.colors.background }]}>
+          <TouchableOpacity
+            style={[
+              styles.finishButton,
+              {
+                backgroundColor: isLoading ? '#CCCCCC' : theme.colors.primary,
+                opacity: isLoading ? 0.7 : 1
+              }
+            ]}
             onPress={handleAppointmentFinished}
             disabled={isLoading}
           >
@@ -475,8 +602,25 @@ const styles = StyleSheet.create({
   },
   patientInfo: {
     fontSize: wp('3.5%'),
+    fontFamily: PoppinsFonts.SemiBold,
     color: '#666666',
     marginBottom: hp('0.8%'),
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: hp('1%'),
+  },
+  detailLabel: {
+    fontSize: wp('3.5%'),
+    fontFamily: PoppinsFonts.Bold,
+    color: '#333333',
+    marginRight: wp('2%'),
+  },
+  detailValue: {
+    fontSize: wp('3.5%'),
+    fontFamily: PoppinsFonts.medium,
+    color: '#666666',
   },
   tokenContainer: {
     flexDirection: 'row',

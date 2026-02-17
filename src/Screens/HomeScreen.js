@@ -374,15 +374,23 @@ const HomeScreen = ({ navigation, route }) => {
               >
             <View style={styles.appointmentContent}>
               <View style={styles.patientImageContainer}>
-                <Image 
-                  source={{ 
-                    uri: appointment.patient?.profile_image && appointment.patient.profile_image !== null 
-                      ? `${API_BASE_URL.replace('/api', '')}/${appointment.patient.profile_image}`
-                      : 'https://spiderdesk.asia/healto/profile_images/1757571656_stylish-handsome-indian-man-tshirt-pastel-wall 1.jpg',
+                <Image
+                  source={{
+                    uri: (() => {
+                      if (appointment.patient?.profile_image && appointment.patient.profile_image !== null) {
+                        // Check if it's already a full URL
+                        if (appointment.patient.profile_image.startsWith('http')) {
+                          return appointment.patient.profile_image;
+                        }
+                        // Otherwise prepend the API base URL
+                        return `${API_BASE_URL.replace('/api', '')}/${appointment.patient.profile_image}`;
+                      }
+                      return 'https://spiderdesk.asia/healto/profile_images/1757571656_stylish-handsome-indian-man-tshirt-pastel-wall 1.jpg';
+                    })(),
                     headers: {
                       'Accept': 'image/*',
                     }
-                  }} 
+                  }}
                   style={styles.patientImage}
                   defaultSource={require('../Assets/Images/phone2.png')}
                   onError={(error) => {
@@ -434,7 +442,9 @@ const HomeScreen = ({ navigation, route }) => {
                     { backgroundColor: appointment.status === 'completed' ? theme.colors.statusCompleted :
                                      appointment.status === 'scheduled' ? theme.colors.statusScheduled : theme.colors.statusPending }
                   ]}>
-                    <Text style={styles.statusText}>{appointment.status}</Text>
+                    <Text style={styles.statusText}>
+                      {appointment.status === 'in_progress' ? 'Ongoing' : appointment.status}
+                    </Text>
                   </View>
                 </View>
               </View>

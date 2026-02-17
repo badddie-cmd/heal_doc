@@ -16,6 +16,7 @@ import LoginScreen from './src/Screens/LoginScreen';
 import WelcomeScreen from './src/Screens/WelcomeScreen';
 import AppointmentDetailsScreen from './src/Screens/AppointmentDetailsScreen';
 import ProfileScreen from './src/Screens/ProfileScreen';
+import AppointmentHistoryScreen from './src/Screens/AppointmentHistoryScreen';
 import { ThemeProvider } from './src/Context/ThemeContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isSessionValid, performLogout } from './src/Utils/StorageUtils';
@@ -116,9 +117,16 @@ function App() {
                     headerShown: false,
                   }}
                 />
-                <Stack.Screen 
-                  name="Profile" 
+                <Stack.Screen
+                  name="Profile"
                   component={ProfileScreen}
+                  options={{
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="AppointmentHistory"
+                  component={AppointmentHistoryScreen}
                   options={{
                     headerShown: false,
                   }}

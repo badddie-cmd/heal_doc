@@ -14,7 +14,7 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'Healto' do
+target 'HealtoNativeSetup' do
   config = use_native_modules!
 
   use_react_native!(
@@ -31,27 +31,5 @@ target 'Healto' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
-    
-    # Vector Icons Configuration for iOS
-    installer.pods_project.targets.each do |target|
-      if target.name == 'RNVectorIcons'
-        target.build_configurations.each do |config|
-          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
-            '$(inherited)',
-            'RN_FONT_AWESOME=1',
-            'RN_MATERIAL_COMMUNITY=1',
-            'RN_MATERIAL_ICONS=1',
-            'RN_IONICONS=1',
-            'RN_FEATHER=1',
-            'RN_ENTYPO=1',
-            'RN_ZOCIAL=1',
-            'RN_SIMPLE_LINE_ICONS=1',
-            'RN_FOUNDATION=1',
-            'RN_EVIL_ICONS=1',
-            'RN_ANT_DESIGN=1',
-          ]
-        end
-      end
-    end
   end
 end

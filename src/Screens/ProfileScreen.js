@@ -12,11 +12,12 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  FlatList,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
@@ -30,26 +31,34 @@ import { request, PERMISSIONS, RESULTS, check } from 'react-native-permissions';
 const ProfileScreen = ({ navigation }) => {
   const theme = useTheme();
   const [doctorInfo, setDoctorInfo] = useState(null);
+  const [specializations, setSpecializations] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const [profileImageUri, setProfileImageUri] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showSpecializationDropdown, setShowSpecializationDropdown] = useState(false);
+  const [showGenderDropdown, setShowGenderDropdown] = useState(false);
+
   const [formData, setFormData] = useState({
     fullName: '',
     phoneNumber: '',
     email: '',
     gender: '',
     specialization: '',
+    specializationId: null,
     qualification: '',
     experience: '',
-    clinicHospital: '',
-    clinicName: '',
+    hospitalName: '',
+    bloodGroup: '',
+    address: '',
   });
 
   // API Base URL
-  const API_BASE_URL = 'https://spiderdesk.asia/healto/api';
+  const API_BASE_URL = 'https://spidermart.in/healto';
+
+  const GENDER_OPTIONS = ['male', 'female', 'other'];
 
   // Load doctor information from API
   useEffect(() => {
@@ -61,77 +70,56 @@ const ProfileScreen = ({ navigation }) => {
       setIsLoading(true);
       setError(null);
       console.log('🔍 Loading Doctor Information from API...');
-      
-      // Get doctor ID from login response data
-      const userLoginData = await AsyncStorage.getItem('userLoginData');
-      console.log('🔍 Retrieved userLoginData:', userLoginData);
-      
-      if (!userLoginData) {
-        throw new Error('Login data not found in storage');
-      }
-      
-        const parsedData = JSON.parse(userLoginData);
-      if (!parsedData.userData || !parsedData.userData.data || !parsedData.userData.data.id) {
-        throw new Error('Doctor ID not found in login data');
-      }
-      
-      const doctorId = parsedData.userData.data.id;
-      console.log('🔍 Retrieved doctor ID from login data:', doctorId);
 
-      // Call API to get doctor edit data
-      const response = await ApiService.getDoctorEditData(doctorId);
-      console.log('🔍 API Response:', JSON.stringify(response, null, 2));
-      
-      if (response.success) {
-        console.log('✅ API call successful');
-        if (response.data && response.data.status) {
-        const doctorData = response.data.data;
-          
-          const doctorInfo = {
-            id: doctorData.id,
-            name: doctorData.name,
-            email: doctorData.email,
-            phone: doctorData.phone,
-            profile_image: doctorData.profile_image,
-          specialization_id: doctorData.specialization_id,
-            experience_years: doctorData.experience_years,
-            qualification: doctorData.qualification,
-            rating: doctorData.rating,
-            info: doctorData.info,
-            gender: doctorData.gender,
-            blood_group: doctorData.blood_group,
-            address: doctorData.address,
-            dob: doctorData.dob,
-            reviews: doctorData.reviews,
-            clinic_id: doctorData.clinic_id,
-            created_at: doctorData.created_at,
-            updated_at: doctorData.updated_at
-          };
-          
-          setDoctorInfo(doctorInfo);
-          
-          // Populate form data
-          setFormData({
-            fullName: doctorData.name || '',
-            phoneNumber: doctorData.phone || '',
-            email: doctorData.email || '',
-            gender: doctorData.gender || 'Male',
-            specialization: 'Cardiology', // You might want to map specialization_id to name
-            qualification: doctorData.qualification || '',
-            experience: doctorData.experience_years?.toString() || '0',
-            clinicHospital: 'Clinic',
-            clinicName: 'Clinic Name', // You might want to get this from clinic_id
-          });
-        
-        console.log('✅ Doctor information loaded successfully');
-        } else {
-          console.log('❌ API response data.status is false:', response.data);
-          throw new Error(response.data?.message || 'API returned status false');
-        }
-      } else {
-        console.log('❌ API call failed:', response.error);
-        throw new Error(response.error || 'Failed to load doctor information');
+      // Call API to get doctor profile
+      const profileResponse = await ApiService.getDoctorProfile();
+      console.log('📥 Profile Response:', JSON.stringify(profileResponse, null, 2));
+
+      if (!profileResponse.success) {
+        throw new Error(`Failed to fetch doctor profile: ${profileResponse.error}`);
       }
+
+      const doctor = profileResponse.data?.data?.doctor;
+      if (!doctor) {
+        throw new Error('No doctor data in API response');
+      }
+
+      console.log('✅ Doctor profile loaded successfully');
+      setDoctorInfo(doctor);
+
+      // Fetch specializations for dropdown
+      console.log('📡 Fetching specializations...');
+      const specsResponse = await ApiService.getDoctorSpecializations();
+      console.log('📥 Specializations Response:', JSON.stringify(specsResponse, null, 2));
+
+      if (specsResponse.success) {
+        const specs = specsResponse.data?.data?.specializations || [];
+        console.log('✅ Specializations loaded:', specs);
+        setSpecializations(specs);
+      } else {
+        console.warn('⚠️ Failed to fetch specializations, using doctor\'s list');
+        setSpecializations(doctor.specializations_list || []);
+      }
+
+      // Populate form data from doctor profile
+      const primarySpecId = doctor.specializations_list?.[0]?.id;
+      const primarySpecName = doctor.specializations_list?.[0]?.name;
+
+      setFormData({
+        fullName: doctor.name || '',
+        phoneNumber: doctor.phone || '',
+        email: doctor.email || '',
+        gender: doctor.gender || 'male',
+        specialization: primarySpecName || '',
+        specializationId: primarySpecId || null,
+        qualification: doctor.qualification || '',
+        experience: doctor.experience_years?.toString() || '0',
+        hospitalName: doctor.hospital?.name || '',
+        bloodGroup: doctor.blood_group || '',
+        address: doctor.address || '',
+      });
+
+      console.log('✅ Form data populated successfully');
     } catch (error) {
       console.error('❌ Error loading doctor info:', error);
       setError(error.message);
@@ -372,53 +360,84 @@ const ProfileScreen = ({ navigation }) => {
       return;
     }
 
+    // Validation
+    if (!formData.fullName.trim()) {
+      Alert.alert('Validation Error', 'Please enter your full name');
+      return;
+    }
+
+    if (!formData.email.trim()) {
+      Alert.alert('Validation Error', 'Please enter your email address');
+      return;
+    }
+
+    if (!formData.phoneNumber.trim()) {
+      Alert.alert('Validation Error', 'Please enter your phone number');
+      return;
+    }
+
     try {
       setSaving(true);
       console.log('🔄 Updating doctor profile via API...');
-      
-      // Prepare data for API
-      const apiData = {
-        doctor_id: doctorInfo.id,
-        name: formData.fullName.trim(),
-        qualification: formData.qualification.trim(),
-        experience_years: parseInt(formData.experience) || 0,
-        profile_image: profileImageUri ? {
+
+      // Prepare form-data (not JSON) - API expects form-data format
+      const formDataToSend = new FormData();
+      formDataToSend.append('doctor_id', doctorInfo.id);
+      formDataToSend.append('name', formData.fullName.trim());
+      formDataToSend.append('email', formData.email.trim());
+      formDataToSend.append('phone', formData.phoneNumber.trim());
+      formDataToSend.append('gender', formData.gender);
+      formDataToSend.append('qualification', formData.qualification.trim());
+      formDataToSend.append('experience_years', parseInt(formData.experience) || 0);
+      formDataToSend.append('blood_group', formData.bloodGroup.trim());
+      formDataToSend.append('address', formData.address.trim());
+
+      // Add specialization ID if selected
+      if (formData.specializationId) {
+        formDataToSend.append('specialization_id', formData.specializationId);
+      }
+
+      // Add image file if user selected a new one
+      if (profileImageUri) {
+        const imageFile = {
           uri: profileImageUri,
           type: 'image/jpeg',
           name: 'profile_image.jpg'
-        } : null,
-        email: formData.email.trim(),
-        phone: formData.phoneNumber.trim(),
-      };
+        };
+        formDataToSend.append('profile_image', imageFile);
+        console.log('📸 Image file added to form data');
+      }
 
-      console.log('📝 Data to be sent to API:', apiData);
+      console.log('📝 Form data prepared for API submission');
 
-      // Call the API
-      const response = await ApiService.updateDoctorProfile(apiData);
-      
+      // Call the API with form-data
+      const response = await ApiService.updateDoctorProfile(formDataToSend);
+
       if (response.success) {
         console.log('✅ Profile updated successfully via API');
         console.log('📝 API Response data:', response.data);
-        
-        // Update local doctor info
+
+        // Update local doctor info with response data
         const updatedDoctorInfo = {
           ...doctorInfo,
           ...response.data.data
         };
-        
+
         setDoctorInfo(updatedDoctorInfo);
-        console.log('✅ Local doctor info updated with complete API response data');
-        
-    Alert.alert(
+        console.log('✅ Local doctor info updated with API response data');
+
+        Alert.alert(
           'Success',
           'Profile updated successfully!',
           [
             {
               text: 'OK',
-          onPress: () => {
-            setIsEditing(false);
+              onPress: () => {
+                setIsEditing(false);
                 setProfileImageUri(null);
-                // Navigate back to HomeScreen to trigger refresh
+                // Reload doctor info to get latest data
+                loadDoctorInfo();
+                // Navigate back to Home to trigger refresh
                 navigation.navigate('Home', { refresh: true });
               }
             }
@@ -465,19 +484,87 @@ const ProfileScreen = ({ navigation }) => {
     };
   };
 
-  const renderInputField = (label, value, iconName, placeholder, fieldKey, isDropdown = false) => (
+  const renderDropdownMenu = (fieldKey, options, isOpen, onSelect) => {
+    if (!isOpen) return null;
+
+    return (
+      <View style={[styles.dropdownMenu, { backgroundColor: theme.colors.cardBackground }]}>
+        <ScrollView
+          style={styles.dropdownMenuScroll}
+          showsVerticalScrollIndicator={true}
+          scrollEnabled={true}
+        >
+          {options.map((option, index) => (
+            <TouchableOpacity
+              key={option.id || option}
+              style={styles.dropdownItem}
+              onPress={() => {
+                onSelect(option);
+                if (fieldKey === 'specialization') {
+                  setShowSpecializationDropdown(false);
+                } else if (fieldKey === 'gender') {
+                  setShowGenderDropdown(false);
+                }
+              }}
+            >
+              <Text style={[styles.dropdownItemText, { color: theme.colors.text }]}>
+                {option.name || option}
+              </Text>
+              {((fieldKey === 'specialization' && formData.specializationId === option.id) ||
+                (fieldKey === 'gender' && formData.gender === option)) && (
+                <Icon name="check" size={16} color="#0D6EFD" />
+              )}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  const renderInputField = (label, value, iconName, placeholder, fieldKey, isDropdown = false, dropdownKey = null) => (
     <View style={styles.inputContainer}>
       <Text style={[styles.inputLabel, { color: theme.colors.text }]}>{label}</Text>
-      <View style={[styles.inputWrapper, { 
+      <View style={[styles.inputWrapper, {
         backgroundColor: theme.colors.inputBackground,
-        borderColor: theme.colors.inputBorder 
+        borderColor: theme.colors.inputBorder
       }]}>
         <Icon name={iconName} size={20} color={theme.colors.textSecondary} style={styles.inputIcon} />
         {isDropdown ? (
-          <TouchableOpacity style={styles.dropdownButton} disabled={!isEditing}>
-            <Text style={[styles.inputText, { color: theme.colors.inputText }]}>{value}</Text>
-                <Icon name="chevron-down" size={16} color={theme.colors.textSecondary} />
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              style={styles.dropdownButton}
+              disabled={!isEditing}
+              onPress={() => {
+                if (fieldKey === 'specialization') {
+                  setShowSpecializationDropdown(!showSpecializationDropdown);
+                  setShowGenderDropdown(false);
+                } else if (fieldKey === 'gender') {
+                  setShowGenderDropdown(!showGenderDropdown);
+                  setShowSpecializationDropdown(false);
+                }
+              }}
+            >
+              <Text style={[styles.inputText, { color: theme.colors.inputText }]}>{value || placeholder}</Text>
+              <Icon name={fieldKey === 'specialization' ? (showSpecializationDropdown ? 'chevron-up' : 'chevron-down') : (showGenderDropdown ? 'chevron-up' : 'chevron-down')} size={16} color={theme.colors.textSecondary} />
+            </TouchableOpacity>
+            {fieldKey === 'specialization' && renderDropdownMenu(
+              'specialization',
+              specializations,
+              showSpecializationDropdown,
+              (option) => {
+                handleInputChange('specializationId', option.id);
+                handleInputChange('specialization', option.name);
+              }
+            )}
+            {fieldKey === 'gender' && renderDropdownMenu(
+              'gender',
+              GENDER_OPTIONS,
+              showGenderDropdown,
+              (option) => {
+                handleInputChange('gender', option);
+              }
+            )}
+          </>
         ) : (
           <TextInput
             style={[styles.textInput, { color: theme.colors.inputText }]}
@@ -586,12 +673,13 @@ const ProfileScreen = ({ navigation }) => {
         {/* Professional Details Section */}
         <View style={[styles.section, { backgroundColor: theme.colors.cardBackground }]}>
           <Text style={[styles.sectionTitle, { color: theme.colors.primary }]}>Professional Details</Text>
-          
+
+          {renderInputField('Specialization', formData.specialization, 'heart', 'Select specialization', 'specialization', true)}
           {renderInputField('Qualification', formData.qualification, 'graduation-cap', 'Enter qualification (e.g., MBBS, MD)', 'qualification')}
           {renderInputField('Year Of Experience', formData.experience, 'star', 'Enter years of experience', 'experience')}
-          {renderInputField('Specialization', formData.specialization, 'heart', 'Select specialization', 'specialization', true)}
-          {renderInputField('Clinic/Hospital', formData.clinicHospital, 'hospital', 'Select clinic or hospital', 'clinicHospital', true)}
-          {renderInputField('Clinic Name', formData.clinicName, 'home', 'Enter clinic name', 'clinicName')}
+          {renderInputField('Clinic/Hospital', formData.hospitalName, 'hospital', 'Clinic/Hospital name', 'hospitalName')}
+          {renderInputField('Blood Group', formData.bloodGroup, 'droplet', 'Enter blood group', 'bloodGroup')}
+          {renderInputField('Address', formData.address, 'map-marker', 'Enter address', 'address')}
         </View>
 
           </ScrollView>
@@ -757,6 +845,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   inputText: {
+    fontSize: wp('4%'),
+    fontFamily: PoppinsFonts.Regular,
+  },
+  dropdownMenu: {
+    marginTop: hp('0.5%'),
+    borderRadius: wp('2%'),
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    maxHeight: hp('25%'),
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  dropdownMenuScroll: {
+    maxHeight: hp('25%'),
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: wp('3%'),
+    paddingVertical: hp('1.5%'),
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  dropdownItemText: {
     fontSize: wp('4%'),
     fontFamily: PoppinsFonts.Regular,
   },

@@ -865,6 +865,7 @@ const styles = StyleSheet.create({
   settingText: {
     fontSize: wp('4%'),
     flex: 1,
+    fontFamily: PoppinsFonts.Regular,
   },
   logoutSection: {
     marginBottom: hp('20%'), // Extra margin for logout section to ensure visibility

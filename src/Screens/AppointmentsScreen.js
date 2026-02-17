@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,16 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
-  Alert
+  TextInput,
+  Platform
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import {
   widthPercentageToDP as wp,
   heightPercentageToDP as hp,
 } from 'react-native-responsive-screen';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import { useTheme } from '../Context/ThemeContext';
 import { PoppinsFonts } from '../Config/Fonts';
@@ -23,7 +24,6 @@ import { ApiService } from '../Utils/ApiService';
 import { API_CONFIG } from '../Config/ApiConfig';
 
 const AppointmentsScreen = ({ navigation }) => {
-  const insets = useSafeAreaInsets();
   const theme = useTheme();
 
   const [appointments, setAppointments] = useState([]);
@@ -32,73 +32,156 @@ const AppointmentsScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Inline filter states
+  const [showDateFilters, setShowDateFilters] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  // Date picker states
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [startDateObj, setStartDateObj] = useState(new Date());
+  const [endDateObj, setEndDateObj] = useState(new Date());
+
+  // Debounce ref for search
+  const searchDebounceRef = useRef(null);
+
   // API Base URL for image URLs (remove /api part for file paths)
   const API_BASE_URL = API_CONFIG.BASE_URL.replace('/public/api', '');
 
   useEffect(() => {
     fetchAppointments();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Listen for navigation parameters to refresh appointments
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeFocus', () => {
+      const params = navigation.getState().routes[navigation.getState().index]?.params;
+      if (params?.refreshAppointments || params?.appointmentUpdated) {
+        console.log('🔄 Detected appointment update - refreshing appointments list...');
+        fetchAppointments();
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     filterAppointments();
-  }, [appointments, selectedFilter]);
+  }, [appointments, selectedFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = async (filters = {}) => {
     try {
       setLoading(true);
-      console.log('📅 Fetching all appointments...');
+      console.log('\n=== 📅 FETCHING APPOINTMENTS ===');
+      console.log('⏰ Timestamp:', new Date().toISOString());
 
-      // Call API to get all appointments
-      console.log('📡 Calling API: GET /doctor/appointments');
-      const response = await ApiService.getDoctorAppointments();
+      // Handle patient name from filters or searchQuery
+      let patientName;
+      if ('patient_name' in filters) {
+        patientName = filters.patient_name || undefined;
+      } else {
+        patientName = searchQuery.trim() || undefined;
+      }
 
-      console.log('📥 API Response:', JSON.stringify(response, null, 2));
+      // Build filter object (SIMPLIFIED - Patient Name & Date only, no sort)
+      const apiFilters = {
+        ...filters,
+        status: selectedFilter !== 'All' ? selectedFilter.toLowerCase() : undefined,
+        patient_name: patientName,
+        start_date: startDate || undefined,
+        end_date: endDate || undefined,
+      };
+
+      // Remove undefined and null values
+      Object.keys(apiFilters).forEach(key => {
+        if (apiFilters[key] === undefined || apiFilters[key] === null) {
+          delete apiFilters[key];
+        }
+      });
+
+      // Call API to get all appointments with filters
+      console.log('📡 Calling API: GET /doctor/appointments with filters:', apiFilters);
+      const response = await ApiService.getDoctorAppointments(apiFilters);
+
+      console.log('\n=== 🔍 API RESPONSE ANALYSIS ===');
+      console.log('Response structure:', {
+        success: response.success,
+        hasData: !!response.data,
+        dataType: typeof response.data,
+        dataKeys: response.data ? Object.keys(response.data).slice(0, 5) : 'N/A',
+      });
 
       if (!response.success) {
         throw new Error(`Failed to fetch appointments: ${response.error}`);
       }
 
-      // Extract appointments data
-      const apiAppointments = response.data?.data || [];
-      console.log('📋 Raw Appointments from API:', apiAppointments);
+      // Extract appointments data - handle different response formats
+      let apiAppointments = [];
+
+      // Try different possible data locations
+      if (response.data?.data && Array.isArray(response.data.data)) {
+        // Format: { success: true, data: { data: [...] } }
+        apiAppointments = response.data.data;
+        console.log('✅ Found appointments in response.data.data (wrapped array)');
+      } else if (Array.isArray(response.data)) {
+        // Format: { success: true, data: [...] }
+        apiAppointments = response.data;
+        console.log('✅ Found appointments in response.data (direct array)');
+      } else if (response.data?.appointments && Array.isArray(response.data.appointments)) {
+        // Format: { success: true, data: { appointments: [...] } }
+        apiAppointments = response.data.appointments;
+        console.log('✅ Found appointments in response.data.appointments');
+      }
+
+      console.log('📋 Total appointments found:', apiAppointments.length);
+      if (apiAppointments.length > 0) {
+        console.log('  First appointment ID:', apiAppointments[0].id);
+        console.log('  Last appointment ID:', apiAppointments[apiAppointments.length - 1].id);
+      }
+      console.log('=== END API RESPONSE ANALYSIS ===\n');
 
       // Transform API response to match card component requirements
-      const transformedAppointments = apiAppointments.map((apt) => ({
-        id: apt.id,
-        token: apt.token_number,
-        patient_name: apt.patient_name,
-        patient_image: apt.patient_image,
-        patient_phone: apt.patient_phone,
-        age: apt.age,
-        symptoms: apt.symptoms,
-        appointment_time: apt.scheduled_time,
-        appointment_date: apt.appointment_date,
-        status: apt.status,
-        details: {
+      console.log('=== 🔄 TRANSFORMING APPOINTMENTS ===');
+      const transformedAppointments = apiAppointments.map((apt, index) => {
+        console.log(`  [${index}] Transforming appointment ID: ${apt.id}`);
+        return {
+          id: apt.id,
           token: apt.token_number,
-          description: apt.symptoms,
-        },
-        patient: {
-          name: apt.patient_name,
+          patient_name: apt.patient_name,
+          patient_image: apt.patient_image,
+          patient_phone: apt.patient_phone,
           age: apt.age,
-          profile_image: apt.patient_image,
-        },
-        sub_patient: {
-          name: apt.patient_name,
-          age: apt.age,
-        }
-      }));
-
-      // Sort appointments by time (earliest first)
-      const sortedAppointments = transformedAppointments.sort((a, b) => {
-        const timeA = a.appointment_time || '00:00';
-        const timeB = b.appointment_time || '00:00';
-        return timeA.localeCompare(timeB);
+          symptoms: apt.symptoms,
+          appointment_time: apt.scheduled_time,
+          appointment_date: apt.appointment_date,
+          status: apt.status,
+          details: {
+            token: apt.token_number,
+            description: apt.symptoms,
+          },
+          patient: {
+            name: apt.patient_name,
+            age: apt.age,
+            profile_image: apt.patient_image,
+          },
+          sub_patient: {
+            name: apt.patient_name,
+            age: apt.age,
+          }
+        };
       });
 
-      console.log('✅ Transformed & Sorted Appointments:', sortedAppointments);
-      setAppointments(sortedAppointments);
+      console.log('✅ Total transformed:', transformedAppointments.length);
+
+      // Backend handles sorting, no client-side sort needed
+      console.log('=== 📊 SETTING STATE ===');
+      setAppointments(transformedAppointments);
       setError(null);
+      console.log('✅ State updated successfully');
+      console.log('=== END TRANSFORMATION ===\n');
     } catch (err) {
       console.error('❌ Error fetching appointments:', err.message);
       console.error('❌ Error details:', {
@@ -112,26 +195,134 @@ const AppointmentsScreen = ({ navigation }) => {
   };
 
   const filterAppointments = () => {
+    console.log('\n=== 🔍 FILTERING APPOINTMENTS ===');
+    console.log('Current filter:', selectedFilter);
+    console.log('Total appointments before filter:', appointments.length);
+
     let filtered = appointments;
-    
+
     switch (selectedFilter) {
       case 'Scheduled':
-        filtered = appointments.filter(appointment => appointment.status === 'scheduled');
+        filtered = appointments.filter(appointment => {
+          const isScheduled = appointment.status === 'scheduled';
+          console.log(`  Appointment ${appointment.id}: status="${appointment.status}" → ${isScheduled ? 'INCLUDED' : 'EXCLUDED'}`);
+          return isScheduled;
+        });
+        console.log(`✅ Found ${filtered.length} scheduled appointments`);
         break;
       case 'Completed':
-        filtered = appointments.filter(appointment => appointment.status === 'completed');
+        filtered = appointments.filter(appointment => {
+          const isCompleted = appointment.status === 'completed';
+          console.log(`  Appointment ${appointment.id}: status="${appointment.status}" → ${isCompleted ? 'INCLUDED' : 'EXCLUDED'}`);
+          return isCompleted;
+        });
+        console.log(`✅ Found ${filtered.length} completed appointments`);
         break;
       case 'All':
       default:
         filtered = appointments;
+        console.log(`✅ Showing all ${filtered.length} appointments`);
         break;
     }
-    
+
+    console.log('Total after filter:', filtered.length);
+    if (filtered.length === 0) {
+      console.log('⚠️ WARNING: No appointments after filtering!');
+      console.log('  Original appointments:', appointments.map(a => `${a.id}(${a.status})`).join(', '));
+    }
+    console.log('=== END FILTERING ===\n');
+
     setFilteredAppointments(filtered);
+  };
+
+  // Debounced search effect
+  useEffect(() => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+
+    setIsSearching(true);
+
+    searchDebounceRef.current = setTimeout(() => {
+      console.log('🔍 Executing debounced search for patient:', searchQuery);
+      fetchAppointments();
+      setIsSearching(false);
+    }, 500);
+
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, [searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleApplyDateFilters = () => {
+    console.log('🔎 Applying date filters...');
+    fetchAppointments();
+    setShowDateFilters(false);
+  };
+
+  const handleClearDateFilters = () => {
+    console.log('🗑️ Clearing date filters...');
+    setStartDate('');
+    setEndDate('');
+    setStartDateObj(new Date());
+    setEndDateObj(new Date());
+    fetchAppointments();
+  };
+
+  const handleClearSearch = () => {
+    console.log('🗑️ Clearing search...');
+    setSearchQuery('');
+    setIsSearching(false);
+    // Explicitly clear search filter
+    fetchAppointments({ patient_name: null });
   };
 
   const navigateToAppointmentDetails = (appointment) => {
     navigation.navigate('AppointmentDetails', { appointment });
+  };
+
+  // Handle start date picker change
+  const handleStartDateChange = (event, selectedDate) => {
+    if (event.type === 'dismissed') {
+      setShowStartDatePicker(false);
+      return;
+    }
+
+    if (selectedDate) {
+      setStartDateObj(selectedDate);
+      // Format date as YYYY-MM-DD
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      setStartDate(`${year}-${month}-${day}`);
+    }
+
+    if (Platform.OS === 'android') {
+      setShowStartDatePicker(false);
+    }
+  };
+
+  // Handle end date picker change
+  const handleEndDateChange = (event, selectedDate) => {
+    if (event.type === 'dismissed') {
+      setShowEndDatePicker(false);
+      return;
+    }
+
+    if (selectedDate) {
+      setEndDateObj(selectedDate);
+      // Format date as YYYY-MM-DD
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      setEndDate(`${year}-${month}-${day}`);
+    }
+
+    if (Platform.OS === 'android') {
+      setShowEndDatePicker(false);
+    }
   };
 
   const renderFilterButton = (filter) => (
@@ -139,7 +330,7 @@ const AppointmentsScreen = ({ navigation }) => {
       key={filter}
       style={[
         styles.filterButton,
-        { 
+        {
           backgroundColor: selectedFilter === filter ? theme.colors.primary : theme.colors.cardBackground,
           borderColor: theme.colors.primary
         }
@@ -155,6 +346,154 @@ const AppointmentsScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
+  // Inline date range filter component
+  const renderDateRangeFilter = () => (
+    <View style={[styles.dateFilterContainer, { backgroundColor: theme.colors.cardBackground }]}>
+      {/* Header with toggle */}
+      <View style={styles.dateFilterHeader}>
+        <View style={styles.dateFilterTitleContainer}>
+          <Icon name="calendar-alt" size={16} color={theme.colors.primary} />
+          <Text style={[styles.dateFilterTitle, { color: theme.colors.text }]}>
+            Filter by Date Range
+          </Text>
+        </View>
+        <TouchableOpacity onPress={() => setShowDateFilters(false)}>
+          <Icon name="chevron-up" size={16} color={theme.colors.text} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Date pickers side by side */}
+      <View style={styles.datePickersRow}>
+        {/* From Date */}
+        <TouchableOpacity
+          style={[
+            styles.datePickerButton,
+            styles.datePickerButtonHalf,
+            {
+              borderColor: startDate ? theme.colors.primary : theme.colors.text,
+              backgroundColor: startDate ? theme.colors.primary : '#F0F7FF'
+            }
+          ]}
+          onPress={() => setShowStartDatePicker(true)}
+        >
+          <Icon
+            name="calendar-alt"
+            size={14}
+            color={startDate ? '#FFFFFF' : theme.colors.primary}
+            style={{ marginRight: wp('1.5%') }}
+          />
+          <Text
+            style={[
+              styles.datePickerButtonText,
+              {
+                color: startDate ? '#FFFFFF' : theme.colors.primary,
+                fontSize: wp('3.2%')
+              }
+            ]}
+          >
+            {startDate || 'From'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* To Date */}
+        <TouchableOpacity
+          style={[
+            styles.datePickerButton,
+            styles.datePickerButtonHalf,
+            {
+              borderColor: endDate ? theme.colors.primary : theme.colors.text,
+              backgroundColor: endDate ? theme.colors.primary : '#F0F7FF'
+            }
+          ]}
+          onPress={() => setShowEndDatePicker(true)}
+        >
+          <Icon
+            name="calendar-alt"
+            size={14}
+            color={endDate ? '#FFFFFF' : theme.colors.primary}
+            style={{ marginRight: wp('1.5%') }}
+          />
+          <Text
+            style={[
+              styles.datePickerButtonText,
+              {
+                color: endDate ? '#FFFFFF' : theme.colors.primary,
+                fontSize: wp('3.2%')
+              }
+            ]}
+          >
+            {endDate || 'To'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Date pickers */}
+      {showStartDatePicker && (
+        <DateTimePicker
+          value={startDateObj}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleStartDateChange}
+        />
+      )}
+
+      {showEndDatePicker && (
+        <DateTimePicker
+          value={endDateObj}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleEndDateChange}
+        />
+      )}
+
+      {/* Action buttons */}
+      <View style={styles.dateFilterActions}>
+        <TouchableOpacity
+          style={[
+            styles.dateActionButton,
+            {
+              backgroundColor: theme.colors.cardBackground,
+              borderColor: theme.colors.primary
+            }
+          ]}
+          onPress={handleClearDateFilters}
+        >
+          <Icon name="times-circle" size={14} color={theme.colors.primary} />
+          <Text style={[styles.dateActionButtonText, { color: theme.colors.primary }]}>
+            Clear Dates
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.dateActionButton,
+            { backgroundColor: theme.colors.primary }
+          ]}
+          onPress={handleApplyDateFilters}
+        >
+          <Icon name="check" size={14} color="#FFFFFF" />
+          <Text style={[styles.dateActionButtonText, { color: '#FFFFFF' }]}>
+            Apply Filters
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Filter info */}
+      {(startDate || endDate) && (
+        <View style={[styles.filterInfoInline, { backgroundColor: '#E3F2FD' }]}>
+          <Icon name="info-circle" size={14} color={theme.colors.primary} />
+          <Text style={[styles.filterInfoTextInline, { color: theme.colors.text }]}>
+            {startDate && endDate
+              ? `Showing appointments from ${startDate} to ${endDate}`
+              : startDate
+              ? `Showing appointments from ${startDate}`
+              : `Showing appointments until ${endDate}`}
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+
   const renderAppointmentCard = (appointment, index) => (
     <TouchableOpacity
       key={appointment.id || index}
@@ -166,9 +505,30 @@ const AppointmentsScreen = ({ navigation }) => {
         <View style={styles.patientImageContainer}>
           <Image
             source={{
-              uri: appointment.patient?.profile_image && appointment.patient.profile_image !== null
-                ? `${API_BASE_URL}/${appointment.patient.profile_image}`
-                : 'https://spiderdesk.asia/healto/profile_images/1757571656_stylish-handsome-indian-man-tshirt-pastel-wall 1.jpg',
+              uri: (() => {
+                // Try direct full URL from patient_image (API response from appointments list)
+                if (appointment.patient_image && appointment.patient_image !== null) {
+                  // Check if it's already a full URL
+                  if (appointment.patient_image.startsWith('http')) {
+                    return appointment.patient_image;
+                  }
+                  // Otherwise prepend API base URL
+                  return `${API_BASE_URL}/${appointment.patient_image}`;
+                }
+
+                // Try profile_image from patient object (API response from appointment details)
+                if (appointment.patient?.profile_image && appointment.patient.profile_image !== null) {
+                  // Check if it's already a full URL
+                  if (appointment.patient.profile_image.startsWith('http')) {
+                    return appointment.patient.profile_image;
+                  }
+                  // Otherwise prepend API base URL
+                  return `${API_BASE_URL}/${appointment.patient.profile_image}`;
+                }
+
+                // Fallback to default image
+                return 'https://spiderdesk.asia/healto/profile_images/1757571656_stylish-handsome-indian-man-tshirt-pastel-wall 1.jpg';
+              })(),
               headers: {
                 'Accept': 'image/*',
               }
@@ -176,10 +536,11 @@ const AppointmentsScreen = ({ navigation }) => {
             style={styles.patientImage}
             defaultSource={require('../Assets/Images/phone2.png')}
             onError={(error) => {
-              console.log('❌ Patient profile image failed to load for:', appointment.patient?.name);
+              console.log('❌ Patient profile image failed to load for:', appointment.patient?.name || appointment.patient_name);
+              console.log('  Attempted URI:', appointment.patient_image || appointment.patient?.profile_image);
             }}
             onLoad={() => {
-              console.log('✅ Patient profile image loaded for:', appointment.patient?.name);
+              console.log('✅ Patient profile image loaded for:', appointment.patient?.name || appointment.patient_name);
             }}
           />
         </View>
@@ -232,7 +593,9 @@ const AppointmentsScreen = ({ navigation }) => {
                 }
               ]}
             >
-              <Text style={styles.statusText}>{appointment.status}</Text>
+              <Text style={styles.statusText}>
+                {appointment.status === 'in_progress' ? 'Ongoing' : appointment.status}
+              </Text>
             </View>
           </View>
         </View>
@@ -258,17 +621,70 @@ const AppointmentsScreen = ({ navigation }) => {
             <Icon name="arrow-left" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.title}>Appointments</Text>
-          <TouchableOpacity style={styles.menuButton}>
-            <Icon name="ellipsis-v" size={24} color="#FFFFFF" />
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => setShowDateFilters(!showDateFilters)}
+          >
+            <Icon name="calendar-alt" size={24} color="#FFFFFF" />
+            {(startDate || endDate) && (
+              <View style={styles.headerDateBadge}>
+                <Text style={styles.headerDateBadgeText}>✓</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </LinearGradient>
 
-        {/* Filter Buttons */}
+        {/* Inline Date Filter - Always Visible */}
+        {showDateFilters && renderDateRangeFilter()}
+
+        {/* Search Bar - Always Visible */}
+        <View style={[styles.searchContainer, { backgroundColor: theme.colors.background }]}>
+          <View
+            style={[
+              styles.searchBar,
+              {
+                borderColor: theme.colors.primary,
+                backgroundColor: theme.colors.cardBackground,
+              }
+            ]}
+          >
+            <Icon
+              name="search"
+              size={16}
+              color={theme.colors.text}
+              style={{ marginRight: wp('2%') }}
+            />
+            <TextInput
+              style={[
+                styles.searchInput,
+                { color: theme.colors.text }
+              ]}
+              placeholder="Search by patient name..."
+              placeholderTextColor={theme.colors.text}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={handleClearSearch}>
+                <Icon name="times-circle" size={16} color={theme.colors.text} />
+              </TouchableOpacity>
+            )}
+            {isSearching && (
+              <ActivityIndicator
+                size="small"
+                color={theme.colors.primary}
+                style={{ marginLeft: wp('1%') }}
+              />
+            )}
+          </View>
+        </View>
+
+        {/* Filter Buttons - Always Visible */}
         <View style={styles.filterContainer}>
           {['All', 'Scheduled', 'Completed'].map(renderFilterButton)}
         </View>
 
-        {/* Content */}
+        {/* Content - Loading/Error/Appointments */}
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -282,7 +698,7 @@ const AppointmentsScreen = ({ navigation }) => {
             <Text style={[styles.errorText, { color: theme.colors.text }]}>
               {error}
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
               onPress={fetchAppointments}
             >
@@ -290,7 +706,7 @@ const AppointmentsScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         ) : filteredAppointments.length > 0 ? (
-          <ScrollView 
+          <ScrollView
             style={styles.appointmentsList}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.appointmentsListContent}
@@ -316,7 +732,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    
   },
   header: {
     flexDirection: 'row',
@@ -325,7 +740,7 @@ const styles = StyleSheet.create({
     paddingTop: hp('1%'),
     paddingBottom: hp('2%'),
     paddingHorizontal: wp('4%'),
-    marginBottom: hp('2%'),
+    marginBottom: hp('1.5%'),
     borderRadius: wp('2%'),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -345,11 +760,135 @@ const styles = StyleSheet.create({
   },
   menuButton: {
     padding: wp('2%'),
+    position: 'relative',
+  },
+  headerDateBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: wp('5%'),
+    height: wp('5%'),
+    borderRadius: wp('2.5%'),
+    backgroundColor: '#FFC107',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerDateBadgeText: {
+    fontSize: wp('3%'),
+    fontFamily: PoppinsFonts.Bold,
+    color: '#FFFFFF',
+  },
+
+  // Inline Date Filter Styles
+  dateFilterContainer: {
+    marginHorizontal: wp('4%'),
+    marginBottom: hp('1.5%'),
+    paddingHorizontal: wp('3%'),
+    paddingVertical: hp('1.5%'),
+    borderRadius: wp('2%'),
+    borderLeftWidth: 4,
+    borderLeftColor: '#0D6EFD',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  dateFilterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: hp('1%'),
+  },
+  dateFilterTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateFilterTitle: {
+    fontSize: wp('3.8%'),
+    fontFamily: PoppinsFonts.SemiBold,
+    marginLeft: wp('2%'),
+  },
+  datePickersRow: {
+    flexDirection: 'row',
+    gap: wp('2%'),
+    marginBottom: hp('1%'),
+  },
+  datePickerButton: {
+    borderWidth: 1,
+    borderRadius: wp('4%'),
+    paddingHorizontal: wp('3%'),
+    paddingVertical: hp('1%'),
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  datePickerButtonHalf: {
+    flex: 1,
+  },
+  datePickerButtonText: {
+    fontSize: wp('3.8%'),
+    fontFamily: PoppinsFonts.SemiBold,
+  },
+  dateFilterActions: {
+    flexDirection: 'row',
+    gap: wp('2%'),
+    marginBottom: hp('0.5%'),
+  },
+  dateActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: hp('1%'),
+    borderRadius: wp('2%'),
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  dateActionButtonText: {
+    fontSize: wp('3.2%'),
+    fontFamily: PoppinsFonts.SemiBold,
+    marginLeft: wp('1%'),
+  },
+  filterInfoInline: {
+    flexDirection: 'row',
+    paddingHorizontal: wp('2.5%'),
+    paddingVertical: hp('0.8%'),
+    borderRadius: wp('1.5%'),
+    alignItems: 'center',
+  },
+  filterInfoTextInline: {
+    fontSize: wp('3%'),
+    fontFamily: PoppinsFonts.Regular,
+    marginLeft: wp('1.5%'),
+    flex: 1,
+  },
+
+  // Search Bar Styles
+  searchContainer: {
+    paddingHorizontal: wp('4%'),
+    paddingVertical: hp('1%'),
+    marginBottom: hp('1%'),
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: wp('3%'),
+    paddingHorizontal: wp('3%'),
+    paddingVertical: hp('1.2%'),
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: wp('3.6%'),
+    fontFamily: PoppinsFonts.Regular,
+    marginHorizontal: wp('2%'),
   },
   filterContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: hp('2%'),
+    fontFamily: PoppinsFonts.Regular,
     paddingHorizontal: wp('2%'),
   },
   filterButton: {
@@ -363,6 +902,7 @@ const styles = StyleSheet.create({
   filterButtonText: {
     fontSize: wp('3.5%'),
     fontWeight: '600',
+    fontFamily: PoppinsFonts.SemiBold,
   },
   loadingContainer: {
     flex: 1,
@@ -398,7 +938,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   appointmentsListContent: {
-    paddingBottom: hp('2%'),
+    paddingBottom: hp('12%'),
   },
   appointmentCard: {
     marginHorizontal: wp('4%'),

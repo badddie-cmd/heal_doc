@@ -21,7 +21,7 @@ export const API_CONFIG = {
     DOCTOR_MARK_UNAVAILABLE: '/doctor/mark-unavailable',
     DOCTOR_MARK_AVAILABLE: '/doctor/mark-available',
     DOCTOR_INACTIVE: '/doctor/inactive',
-    DOCTOR_UPDATE: '/doctor/update',
+    DOCTOR_UPDATE: '/doctor/update-profile',
     DOCTOR_APPOINTMENT_HISTORY: '/doctor/appointment-history',
   },
 

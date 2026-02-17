@@ -1,6 +1,32 @@
-// Font configuration for Poppins fonts
+import { Platform } from 'react-native';
+
+// Poppins Font Family Mapping
+export const PoppinsFonts = {
+  // Regular weights
+  Thin: Platform.OS === 'ios' ? 'Poppins-Thin' : 'Poppins-Thin',
+  ExtraLight: Platform.OS === 'ios' ? 'Poppins-ExtraLight' : 'Poppins-ExtraLight',
+  Light: Platform.OS === 'ios' ? 'Poppins-Light' : 'Poppins-Light',
+  Regular: Platform.OS === 'ios' ? 'Poppins-Regular' : 'Poppins-Regular',
+  Medium: Platform.OS === 'ios' ? 'Poppins-Medium' : 'Poppins-Medium',
+  SemiBold: Platform.OS === 'ios' ? 'Poppins-SemiBold' : 'Poppins-SemiBold',
+  Bold: Platform.OS === 'ios' ? 'Poppins-Bold' : 'Poppins-Bold',
+  ExtraBold: Platform.OS === 'ios' ? 'Poppins-ExtraBold' : 'Poppins-ExtraBold',
+  Black: Platform.OS === 'ios' ? 'Poppins-Black' : 'Poppins-Black',
+
+  // Italic weights
+  ThinItalic: Platform.OS === 'ios' ? 'Poppins-ThinItalic' : 'Poppins-ThinItalic',
+  ExtraLightItalic: Platform.OS === 'ios' ? 'Poppins-ExtraLightItalic' : 'Poppins-ExtraLightItalic',
+  LightItalic: Platform.OS === 'ios' ? 'Poppins-LightItalic' : 'Poppins-LightItalic',
+  Italic: Platform.OS === 'ios' ? 'Poppins-Italic' : 'Poppins-Italic',
+  MediumItalic: Platform.OS === 'ios' ? 'Poppins-MediumItalic' : 'Poppins-MediumItalic',
+  SemiBoldItalic: Platform.OS === 'ios' ? 'Poppins-SemiBoldItalic' : 'Poppins-SemiBoldItalic',
+  BoldItalic: Platform.OS === 'ios' ? 'Poppins-BoldItalic' : 'Poppins-BoldItalic',
+  ExtraBoldItalic: Platform.OS === 'ios' ? 'Poppins-ExtraBoldItalic' : 'Poppins-ExtraBoldItalic',
+  BlackItalic: Platform.OS === 'ios' ? 'Poppins-BlackItalic' : 'Poppins-BlackItalic',
+};
+
+// Backward compatibility - old naming convention
 export const Fonts = {
-  // Poppins font weights
   PoppinsRegular: 'Poppins-Regular',
   PoppinsBold: 'Poppins-Bold',
   PoppinsMedium: 'Poppins-Medium',
@@ -57,5 +83,17 @@ export const FontStyles = {
   },
 };
 
-// Export PoppinsFonts for backward compatibility
-export const PoppinsFonts = Fonts;
+// Helper function to get font family by weight
+export const getPoppinsFont = (weight = 'Regular', italic = false) => {
+  const weightKey = weight + (italic ? 'Italic' : '');
+  return PoppinsFonts[weightKey] || PoppinsFonts.Regular;
+};
+
+// Helper function to create text style with Poppins font
+export const createTextStyle = (fontWeight = 'Regular', fontSize = 16, color = '#000', italic = false) => ({
+  fontFamily: getPoppinsFont(fontWeight, italic),
+  fontSize,
+  color,
+});
+
+export default PoppinsFonts;

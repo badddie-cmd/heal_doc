@@ -9,6 +9,7 @@ import {
 import HomeScreen from '../Screens/HomeScreen';
 import AppointmentsScreen from '../Screens/AppointmentsScreen';
 import SettingsScreen from '../Screens/SettingsScreen';
+import { PoppinsFonts } from '../Config/Fonts';
 
 const Tab = createBottomTabNavigator();
 
@@ -106,7 +107,8 @@ const CustomTabBar = (props) => {
                 <View style={{ marginTop: hp('0.6%') }}>
                   <Text style={{
                     fontSize: wp('3%'),
-                    fontWeight: '500',
+                    fontFamily: PoppinsFonts.Medium,
+                    //fontWeight: '500',
                     color: 'white',
                     textAlign: 'center',
                   }}>
